@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>タクシー帝国</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f7;--surface:#fff;--border:#d2d2d7;
+  --text:#1d1d1f;--sub:#6e6e73;--accent:#0071e3;
+  --green:#34c759;--red:#ff3b30;--amber:#ff9500;
+  --fn:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Noto Sans JP',sans-serif;
+}
+body{font-family:var(--fn);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 12px;flex-shrink:0}
+.tr1{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.game-title{font-weight:700;font-size:15px}
+.game-time{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums}
+.cash{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.cash.neg{color:var(--red)}
+.tr2{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.spg{display:flex;gap:2px;background:#f0f0f3;border-radius:8px;padding:2px}
+.spb{background:none;border:none;padding:3px 7px;border-radius:6px;font-size:11px;cursor:pointer;color:var(--sub);font-variant-numeric:tabular-nums}
+.spb.on{background:var(--surface);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.plbtn{padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;border:none;cursor:pointer}
+.plbtn.run{background:#d4f5df;color:#155724}.plbtn.stp{background:#f0f0f3;color:var(--text)}
+.nbtn{position:relative;background:none;border:none;font-size:17px;cursor:pointer;padding:0 4px}
+.nbadge{position:absolute;top:-3px;right:-3px;background:var(--red);color:#fff;font-size:9px;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
+#tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;flex-shrink:0}
+.tab{flex:1;min-width:52px;padding:9px 2px;text-align:center;font-size:11px;font-weight:500;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;border-top:none;border-left:none;border-right:none;background:none}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);background:#f0f6ff}
+#main{flex:1;overflow-y:auto;padding:10px}
+#sbar{background:var(--surface);border-top:1px solid var(--border);padding:5px 12px;display:flex;justify-content:space-between;font-size:11px;color:var(--sub);flex-shrink:0;font-variant-numeric:tabular-nums}
+.pbadge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.pb-setup{background:#fff3cd;color:#856404}.pb-applied{background:#cce5ff;color:#004085}
+.pb-operating{background:#d4edda;color:#155724}.pb-gameover{background:#f8d7da;color:#721c24}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:9px}
+.ct{font-weight:600;font-size:14px;margin-bottom:9px}
+.ci{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f3;font-size:12px}
+.ci:last-child{border-bottom:none}
+.ci-ic{flex-shrink:0;font-size:15px}.ci-body{flex:1}
+.ci-t{font-weight:500;margin-bottom:1px}.ci-d{font-size:11px;color:var(--sub)}.ci-law{font-size:10px;color:#bbb;margin-top:2px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px}
+.sb{background:var(--bg);border-radius:8px;padding:8px 10px}
+.sl{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
+.sv{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.sv.pos{color:var(--green)}.sv.neg{color:var(--red)}.ss{font-size:10px;color:var(--sub);font-variant-numeric:tabular-nums}
+.btn{display:inline-block;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--accent);color:#fff}.btn-d{background:var(--red);color:#fff}
+.btn-s{background:#f0f0f3;color:var(--text)}.btn-g{background:var(--green);color:#fff}
+.btn-sm{padding:4px 10px;font-size:12px}.btn-bl{width:100%;display:block;text-align:center;margin-top:6px}
+.sc{border:1px solid var(--border);border-radius:9px;padding:11px;margin-bottom:9px;background:var(--surface)}
+.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sc-info{flex:1;min-width:0}
+.sn{font-weight:600;font-size:13px}.sm{font-size:11px;color:var(--sub);margin-top:1px}
+.arc-tag{display:inline-block;background:#f0f0f3;color:var(--sub);font-size:10px;padding:1px 7px;border-radius:4px;margin-top:3px}
+.rt{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;margin-right:3px;margin-top:4px;cursor:pointer;border:none}
+.rt-off{background:#f0f0f3;color:var(--sub)}.rt-dr{background:#e8f4fd;color:#0071e3}
+.rt-of{background:#fdf3e8;color:#d35400}.rt-op{background:#e8fdf3;color:#27ae60}.rt-ma{background:#fde8fd;color:#8e44ad}
+.qb{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;margin-right:3px;margin-top:3px}
+.qb-ok{background:#d4edda;color:#155724}.qb-ng{background:#f0f0f3;color:var(--sub)}
+.sbw{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:7px}
+.sr{display:flex;align-items:center;gap:4px;font-size:10px}
+.sr-l{width:22px;color:var(--sub)}.sr-b{flex:1;height:3px;background:#f0f0f3;border-radius:2px;overflow:hidden}
+.sr-f{height:100%;background:var(--accent)}.sr-v{width:20px;text-align:right;color:var(--sub);font-variant-numeric:tabular-nums}
+.vc{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px}
+.cbar{height:4px;background:#f0f0f3;border-radius:2px;overflow:hidden;margin-top:5px}
+.cbar-f{height:100%;border-radius:2px}
+.ev-tag{display:inline-block;background:#ede9fe;color:#7c3aed;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-left:5px}
+.lease-tag{display:inline-block;background:#fff0f6;color:#c2185b;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;margin-left:4px}
+.fr{display:flex;justify-content:space-between;padding:3px 0;font-size:12px;font-variant-numeric:tabular-nums}
+.fd{border-top:1px solid var(--border);margin:4px 0}.fi{padding-left:10px;color:var(--sub)}
+.ib{border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:12px;line-height:1.5}
+.ib-ok{background:#d4edda;border:1px solid #c3e6cb;color:#155724}
+.ib-warn{background:#fff3cd;border:1px solid #ffc107;color:#856404}
+.ib-info{background:#cce5ff;border:1px solid #b8daff;color:#004085}
+.ib-err{background:#f8d7da;border:1px solid #f5c6cb;color:#721c24}
+.apply-btn{width:100%;padding:13px;border-radius:10px;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-top:8px}
+.apply-btn:disabled{background:#f0f0f3;color:var(--sub);cursor:not-allowed}
+.apply-btn:not(:disabled){background:var(--accent);color:#fff}
+#np{position:absolute;inset:0;background:var(--surface);z-index:100;display:none;flex-direction:column}
+#np.show{display:flex}
+.nh{padding:11px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px}
+.nl{flex:1;overflow-y:auto;padding:8px 12px}
+.ni{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f5f5f7}
+.nd{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.nd-info{background:var(--accent)}.nd-warn{background:var(--amber)}.nd-danger{background:var(--red)}
+.nt{font-size:12px}.ntm{font-size:10px;color:var(--sub);margin-top:1px;font-variant-numeric:tabular-nums}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.md{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:380px}
+.md-title{font-size:16px;font-weight:700;margin-bottom:12px}
+/* loan */
+.loan-row{border:1px solid var(--border);border-radius:8px;padding:9px;margin-bottom:7px;font-size:12px}
+.loan-name{font-weight:600;margin-bottom:3px}
+.loan-meta{color:var(--sub);display:flex;flex-wrap:wrap;gap:8px}
+/* tax */
+.tax-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f3;font-size:12px}
+.tax-row:last-child{border:none}
+.tax-lbl{color:var(--sub)}.tax-val{font-weight:600;font-variant-numeric:tabular-nums}
+select{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--surface);color:var(--text);font-family:var(--fn)}
+input[type=number]{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:var(--surface);color:var(--text);font-family:var(--fn);width:100%}
+</style>
+</head>
+<body>
+<div id="app" style="height:100%;display:flex;flex-direction:column;position:relative">
+  <div id="topbar">
+    <div class="tr1">
+      <span class="game-title">🚕 タクシー帝国</span>
+      <span id="gtime" class="game-time"></span>
+      <button class="nbtn" onclick="toggleNotif()">🔔<span id="nbadge" class="nbadge" style="display:none"></span></button>
+    </div>
+    <div class="tr2">
+      <div class="spg">
+        <button class="plbtn stp" id="plbtn" onclick="togglePlay()">⏸ 停止</button>
+        <button class="spb" id="sp1"   onclick="setSpeed(1)">1x</button>
+        <button class="spb" id="sp5"   onclick="setSpeed(5)">5x</button>
+        <button class="spb" id="sp10"  onclick="setSpeed(10)">10x</button>
+        <button class="spb" id="sp20"  onclick="setSpeed(20)">20x</button>
+        <button class="spb" id="sp50"  onclick="setSpeed(50)">50x</button>
+        <button class="spb" id="sp100" onclick="setSpeed(100)">100x</button>
+      </div>
+      <span id="cashdsp" class="cash"></span>
+    </div>
+  </div>
+  <div id="tabs">
+    <button class="tab" id="tab-compliance" onclick="setTab('compliance')">法令</button>
+    <button class="tab" id="tab-staff"      onclick="setTab('staff')">スタッフ</button>
+    <button class="tab" id="tab-vehicles"   onclick="setTab('vehicles')">車両</button>
+    <button class="tab" id="tab-facility"   onclick="setTab('facility')">施設</button>
+    <button class="tab" id="tab-finance"    onclick="setTab('finance')">財務</button>
+  </div>
+  <div id="main"></div>
+  <div id="sbar"><div id="phasedsp"></div><div id="sright"></div></div>
+  <div id="np">
+    <div class="nh"><span>通知</span><button class="btn btn-s btn-sm" onclick="toggleNotif()">閉じる</button></div>
+    <div class="nl" id="nlist"></div>
+  </div>
+</div>
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const VM={
+  kei:    {name:'軽自動車タクシー',    price:1200000,buyMo:30000,leaseMo:35000,fuel:20,   rm:1.0, ev:false},
+  comfort:{name:'セダン (コンフォート)',price:2500000,buyMo:50000,leaseMo:58000,fuel:13,   rm:1.2, ev:false},
+  jpntaxi:{name:'JPN TAXI (HV)',       price:3300000,buyMo:60000,leaseMo:72000,fuel:19,   rm:1.35,ev:false},
+  leaf:   {name:'NISSAN LEAF (EV)',    price:4000000,buyMo:40000,leaseMo:88000,kwhPkm:0.167,rm:1.3,ev:true},
+};
+const DEM=[.4,.4,.4,.4,.4,.5,.9,1.6,1.5,1.0,.7,.7,.7,.7,.8,.9,1.2,1.3,1.5,1.8,1.8,1.8,2.2,2.5];
+const BASE_REV=2800;
+const FC={
+  office:{price:3000000,mo:200000,label:'営業所',cap:0},
+  g10:   {price:5000000,mo:300000,label:'車庫(10台)',cap:10},
+  g20:   {price:9000000,mo:510000,label:'車庫(20台)',cap:20},
+  rest:  {price:500000, mo:0,     label:'休憩・睡眠施設',cap:0},
+};
+const LAST=['佐藤','鈴木','高橋','田中','渡辺','伊藤','山本','中村','小林','加藤','吉田','山田','佐々木','松本','井上','木村','林','斎藤','岡田','清水','山口','池田','石川','前田','宮本','原田'];
+const FIRST_M=['健太','大輔','翔太','拓也','直樹','一郎','正樹','雄大','裕介','達也','賢一','昭彦','誠','徹','学','俊介','和彦','勝也','隆','博'];
+const FIRST_F=['由美','恵子','明子','幸子','京子','裕子','智子','美穂','直子','純子','かおり','さやか','みゆき','涼子'];
+const ARC=[
+  {id:'taxi', label:'元タクシー経験者',   b:{d:20,sv:5,g:15,st:5,m:0},   oC:.15,mC:.05,ofC:.1},
+  {id:'truck',label:'元長距離トラック',   b:{d:15,sv:-5,g:10,st:10,m:-5},oC:.05,mC:.15,ofC:.05},
+  {id:'bus',  label:'元バスドライバー',   b:{d:10,sv:8,g:5,st:5,m:0},    oC:.2, mC:.05,ofC:.1},
+  {id:'hotel',label:'元ホテル・接客業',   b:{d:-5,sv:25,g:0,st:5,m:10},  oC:.03,mC:.02,ofC:.08},
+  {id:'mech', label:'元自動車整備士',     b:{d:5,sv:0,g:5,st:5,m:5},     oC:.03,mC:.55,ofC:.05},
+  {id:'mgr',  label:'管理職経験者',       b:{d:0,sv:10,g:0,st:0,m:5},    oC:.2, mC:.1, ofC:.4},
+  {id:'new',  label:'未経験者',           b:{d:-20,sv:0,g:-15,st:10,m:15},oC:0,  mC:0,  ofC:0},
+  {id:'ret',  label:'定年再雇用',         b:{d:10,sv:10,g:10,st:-10,m:5}, oC:.1, mC:.2, ofC:.2},
+  {id:'disp', label:'元配車オペレーター', b:{d:5,sv:5,g:15,st:0,m:5},    oC:.25,mC:.05,ofC:.25},
+  {id:'sale', label:'元営業・外回り',     b:{d:5,sv:15,g:10,st:0,m:8},   oC:.08,mC:.02,ofC:.12},
+];
+const LOAN_PRESETS=[
+  {label:'¥500万 / 24ヶ月', amount:5000000,  term:24},
+  {label:'¥1000万 / 36ヶ月',amount:10000000, term:36},
+  {label:'¥2000万 / 48ヶ月',amount:20000000, term:48},
+  {label:'¥3000万 / 60ヶ月',amount:30000000, term:60},
+  {label:'¥5000万 / 60ヶ月',amount:50000000, term:60},
+];
+
+// ============================================================
+// STATE
+// ============================================================
+function initState(){
+  return {
+    phase:'setup',time:new Date(2026,3,1,6,0),speed:1,running:false,
+    tab:'compliance',staffTab:'hired',
+    co:{name:'新星タクシー株式会社',cash:30000000},
+    staff:[],candidates:genCandidates(10),
+    vehicles:[],
+    fac:{office:false,garage:false,garageCapacity:0,rest:false,mo:0},
+    permitApplied:null,permitReady:null,
+    fin:{cur:newBucket(new Date(2026,3,1)),hist:[]},
+    eco:{fuel:170,elec:28},
+    loans:[],
+    taxes:{ctAccrued:0,ctPaid:0,corpFYProfit:0,corpPaid:0,history:[]},
+    _confirm:null,
+    _loanPreset:0,
+    notifs:[],nid:1,showNotif:false,
+  };
+}
+function newBucket(d){return{month:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,rev:0,dPay:0,fuel:0,vmo:0,fmo:0,sal:0,maint:0,loanPay:0,profit:null};}
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36).slice(-5);}
+function rnd(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+
+function genCandidates(n){
+  const list=Array.from({length:n},()=>{
+    const arc=ARC[Math.floor(Math.random()*ARC.length)];
+    const fem=Math.random()<.25;
+    const bs={d:rnd(35,72),sv:rnd(30,70),g:rnd(30,72),st:rnd(45,80),m:rnd(55,85)};
+    const stats={driving:clamp(bs.d+arc.b.d,10,99),service:clamp(bs.sv+arc.b.sv,10,99),
+      geo:clamp(bs.g+arc.b.g,10,99),stamina:clamp(bs.st+arc.b.st,10,99),motivation:clamp(bs.m+arc.b.m,10,99)};
+    const lp=arc.ofC>0&&Math.random()<arc.ofC;
+    return {id:uid(),name:`${LAST[rnd(0,LAST.length-1)]} ${fem?FIRST_F[rnd(0,FIRST_F.length-1)]:FIRST_M[rnd(0,FIRST_M.length-1)]}`,
+      age:rnd(24,65),exp:rnd(0,25),arc:arc.id,arcLabel:arc.label,
+      lic2:arc.id!=='new'||Math.random()<.3,lawPassed:lp,canOfficer:lp,
+      opsQ:Math.random()<arc.oC,maintQ:Math.random()<arc.mC,
+      stats,salary:rnd(190000,330000),cr:0.44+Math.random()*.13,roles:[],vehicleId:null};
+  });
+  // 各種資格を最低1名保証
+  if(!list.some(c=>c.opsQ)){const t=rnd(0,n-1);list[t]={...list[t],opsQ:true,arcLabel:list[t].arcLabel+' ★運行管理者'};}
+  if(!list.some(c=>c.maintQ)){const t=rnd(0,n-1);list[t]={...list[t],maintQ:true,arcLabel:list[t].arcLabel+' ★整備管理者'};}
+  if(!list.some(c=>c.canOfficer&&c.lawPassed)){
+    const t=rnd(0,n-1);
+    list[t]={...list[t],canOfficer:true,lawPassed:true,arcLabel:list[t].arcLabel+' ★役員候補'};
+  }
+  return list;
+}
+
+// ============================================================
+// COMPLIANCE
+// ============================================================
+function comply(s){
+  const vc=s.vehicles.length,st=s.staff;
+  const hasOfficer=st.some(p=>p.roles.includes('officer')&&p.canOfficer&&p.lawPassed);
+  const drivers=st.filter(p=>p.roles.includes('driver'));
+  const dOk=drivers.length>=vc&&drivers.length>0&&drivers.every(p=>p.lic2);
+  const hasOps=st.some(p=>p.roles.includes('opsmanager')&&p.opsQ);
+  const needMaint=vc>=5,hasMaint=st.some(p=>p.roles.includes('maintmanager')&&p.maintQ);
+  const maintOk=!needMaint||hasMaint,minV=vc>=5;
+  const facOk=s.fac.office&&s.fac.garage&&s.fac.rest&&s.fac.garageCapacity>=vc;
+  const reqCap=reqCapital(s),capOk=s.co.cash>=reqCap;
+  return{
+    officer:{ok:hasOfficer,detail:hasOfficer?'役員が専従・法令試験合格済':'法令試験合格済の専従役員が未選任',law:'道路運送法§9：役員のうち1名以上が事業に専従し、法令試験に合格していること'},
+    drivers:{ok:dOk,detail:`運転手 ${drivers.length}名 ／ 車両 ${vc}台 ${!dOk&&vc>drivers.length?'(不足)':''}`,law:'道路運送法：全運転者が第二種運転免許を保有し、車両台数以上を確保すること'},
+    opsManager:{ok:hasOps,detail:hasOps?'運行管理者 選任済':'運行管理者（国家資格保有者）が未選任',law:'道路運送法§23：有資格の運行管理者を選任すること'},
+    maintManager:{ok:maintOk,detail:needMaint?(hasMaint?'整備管理者 選任済':'整備管理者が未選任（5台以上のため必須）'):`現在${vc}台のため不要`,law:'道路運送車両法§50：5台以上の場合、整備管理者を選任すること'},
+    minVehicles:{ok:minV,detail:`${vc}台確保（最低5台必要）`,law:'国土交通省令：一般乗用旅客自動車運送事業は1営業所につき5台以上'},
+    facility:{ok:facOk,detail:!s.fac.office?'営業所を確保してください':!s.fac.garage?'車庫を確保してください':!s.fac.rest?'休憩・睡眠施設が必要です':s.fac.garageCapacity<vc?`車庫容量不足`:' 営業所・車庫・休憩施設 確保済',law:'道路運送法：車庫は営業所から概ね2km以内、3年以上の使用権原が必要'},
+    capital:{ok:capOk,detail:`保有 ${yen(s.co.cash)} ／ 必要額 ${yen(reqCap)}`,law:'国土交通省：申請日から許可日まで、事業開始に必要な資金を100%以上常時確保すること'},
+    all:hasOfficer&&dOk&&hasOps&&maintOk&&minV&&facOk&&capOk,
+  };
+}
+function reqCapital(s){const mo=s.vehicles.reduce((a,v)=>a+v.mo,0)+s.fac.mo+s.staff.reduce((a,p)=>a+p.salary,0);return Math.max(5000000,mo*3);}
+function calcCorpTax(profit){
+  if(profit<=0)return 70000;
+  const t=profit<=8000000?profit*.15:8000000*.15+(profit-8000000)*.232;
+  return Math.max(70000,Math.round(t*1.42)); // +地方法人税・住民税・事業税 概算
+}
+function loanMonthly(amount,term){const r=0.025/12;return Math.round(amount*r/(1-Math.pow(1+r,-term)));}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function yen(n){const v=Math.round(n);if(Math.abs(v)>=100000000)return`¥${(v/100000000).toFixed(2)}億`;if(Math.abs(v)>=10000)return`¥${(v/10000).toLocaleString(undefined,{maximumFractionDigits:1})}万`;return`¥${v.toLocaleString()}`;}
+function fmt(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+function fmtM(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`;}
+function skillMult(p){return(0.5+(p.stats.driving+p.stats.service+p.stats.geo)/300)*(p.stats.motivation/100);}
+
+// ============================================================
+// CONFIRM SYSTEM (replaces window.confirm)
+// ============================================================
+function askConfirm(msg,action){G._confirm={msg,action};render();}
+function confirmYes(){if(G._confirm){const a=G._confirm.action;G._confirm=null;a();}else render();}
+function confirmNo(){G._confirm=null;render();}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let G=initState(),timer=null;
+function togglePlay(){if(G.phase==='gameover')return;G.running=!G.running;G.running?startTick():stopTick();render();}
+function setSpeed(s){G.speed=s;if(G.running){stopTick();startTick();}render();}
+function startTick(){if(timer)clearInterval(timer);let last=Date.now();timer=setInterval(()=>{const n=Date.now();tick(n-last);last=n;},500);}
+function stopTick(){if(timer){clearInterval(timer);timer=null;}}
+
+function tick(ms){
+  if(!G.running||G.phase==='gameover')return;
+  let rem=Math.floor((ms/1000)*6*G.speed),s=0;
+  while(rem>0&&s++<30000){
+    const step=Math.min(rem,60-G.time.getMinutes());
+    G.time=new Date(G.time.getTime()+step*60000);rem-=step;
+    if(G.time.getMinutes()===0)onHour();
+    if(G.time.getDate()===1&&G.time.getHours()===0&&G.time.getMinutes()===0)onMonthEnd();
+  }
+  render();
+}
+
+function onHour(){
+  if(G.phase==='applied'&&G.permitReady&&G.time>=G.permitReady){G.phase='operating';addN('info','許可が交付されました！営業を開始してください🎉');}
+  if(G.phase!=='operating')return;
+  const h=G.time.getHours(),dem=DEM[h];
+  const wm=(d=>d===5||d===6?1.15:d===0?.9:1.0)(G.time.getDay());
+  let rev=0,dPay=0,fuel=0;
+  G.vehicles=G.vehicles.map(v=>{
+    const dr=G.staff.find(p=>p.id===v.driverId);if(!dr)return v;
+    const m=VM[v.modelId],sm=skillMult(dr),cm=0.6+(v.cond/100)*.4;
+    const hr=BASE_REV*dem*wm*m.rm*sm*cm;
+    rev+=hr;dPay+=hr*dr.cr;
+    const km=8+dem*10;
+    fuel+=m.ev?(km*m.kwhPkm*G.eco.elec):((km/m.fuel)*G.eco.fuel);
+    return{...v,mileage:v.mileage+km,cond:Math.max(0,v.cond-km*.002),totalRev:(v.totalRev||0)+hr};
+  });
+  G.co.cash+=rev-dPay-fuel;
+  G.fin.cur.rev+=rev;G.fin.cur.dPay+=dPay;G.fin.cur.fuel+=fuel;
+  if(G.time.getHours()===0){
+    G.eco.fuel=Math.round(Math.max(140,Math.min(210,G.eco.fuel+(Math.random()-.5)*4))*10)/10;
+    G.eco.elec=Math.round(Math.max(22,Math.min(38,G.eco.elec+(Math.random()-.5)*.8))*10)/10;
+  }
+  if(Math.random()<.0008){const c=comply(G);if(!c.all){G.co.cash-=500000;addN('danger','抜き打ち監査：違反検出。罰則金 ¥50万');}else addN('info','抜き打ち監査：問題なし ✓');}
+  if(G.co.cash<-100000000){G.phase='gameover';G.running=false;stopTick();addN('danger','資金枯渇 — 破産');}
+}
+
+function onMonthEnd(){
+  const b=G.fin.cur;
+  const vmo=G.vehicles.reduce((a,v)=>a+v.mo,0);
+  const fmo=G.fac.mo,sal=G.staff.reduce((a,p)=>a+p.salary,0);
+  const maint=G.vehicles.reduce((a,v)=>a+(v.mileage/1000)*VM[v.modelId].price*.001,0);
+
+  // ローン返済
+  let loanPay=0;
+  G.loans=G.loans.map(loan=>{
+    if(loan.remaining<=0)return loan;
+    const interest=loan.remaining*(0.025/12);
+    const principal=Math.min(loan.monthly-interest,loan.remaining);
+    const payment=Math.round(interest+principal);
+    loanPay+=payment;G.co.cash-=payment;
+    return{...loan,remaining:Math.max(0,loan.remaining-principal)};
+  }).filter(l=>l.remaining>0.01);
+  b.loanPay=loanPay;
+
+  b.vmo=vmo;b.fmo=fmo;b.sal=sal;b.maint=maint;
+  b.profit=b.rev-b.dPay-b.fuel-vmo-fmo-sal-maint-loanPay;
+  G.co.cash-=vmo+fmo+sal+maint;
+  G.fin.hist.push(b);G.fin.cur=newBucket(G.time);
+
+  // 消費税の累積 (売上の3.6%を仮定: 課税売上10/110 - 仕入税額控除後 実効)
+  const ctThis=Math.round(b.rev*0.036);
+  G.taxes.ctAccrued+=ctThis;
+
+  // 法人税用: 当期利益の累積 (4月起算の事業年度)
+  G.taxes.corpFYProfit+=b.profit;
+
+  // 四半期チェック: 4/7/10/1月初 = 前四半期末に消費税納付
+  const nm=G.time.getMonth(); // 新しい月(0-indexed)
+  const isQEnd=[3,6,9,0].includes(nm);
+  if(isQEnd&&G.taxes.ctAccrued>0){
+    const ctPay=Math.round(G.taxes.ctAccrued);
+    G.co.cash-=ctPay;G.taxes.ctPaid+=ctPay;G.taxes.ctAccrued=0;
+    G.taxes.history.push({type:'消費税',amount:ctPay,date:new Date(G.time)});
+    addN('warn',`消費税 四半期納付: ${yen(ctPay)}`);
+  }
+
+  // 事業年度末チェック: 4月初 = 3月決算 → 法人税確定申告 (2ヶ月後=6月が本来だが即時納付に簡略)
+  const isFYEnd=nm===3;
+  if(isFYEnd&&G.phase==='operating'){
+    const corpTax=calcCorpTax(G.taxes.corpFYProfit);
+    G.co.cash-=corpTax;G.taxes.corpPaid+=corpTax;
+    G.taxes.history.push({type:'法人税等',amount:corpTax,date:new Date(G.time)});
+    addN('warn',`法人税等 確定申告: ${yen(corpTax)} (当期利益 ${yen(G.taxes.corpFYProfit)})`);
+    G.taxes.corpFYProfit=0;
+  }
+
+  G.candidates=genCandidates(10);
+  G.staff=G.staff.map(p=>({...p,stats:{...p.stats,motivation:clamp(p.stats.motivation+(p.vehicleId?(Math.random()*4-1):-3),10,100)}}));
+  addN(b.profit>=0?'info':'warn',`${b.month} 月次決算: ${b.profit>=0?'利益':'損失'} ${yen(Math.abs(b.profit))}`);
+  if(G.co.cash<-100000000){G.phase='gameover';G.running=false;stopTick();addN('danger','資金枯渇 — 破産');}
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function buyFac(type){
+  const f=FC[type];if(!f)return;
+  if(G.co.cash<f.price){addN('warn','資金が不足しています');return;}
+  if(type==='rest'&&!G.fac.office&&!G.fac.garage){addN('warn','先に営業所または車庫を確保してください');return;}
+  G.co.cash-=f.price;G.fac.mo+=f.mo;
+  if(type==='office')G.fac.office=true;
+  else if(type==='g10'||type==='g20'){G.fac.garage=true;G.fac.garageCapacity=FC[type].cap;}
+  else if(type==='rest')G.fac.rest=true;
+  addN('info',`${f.label} を確保しました (${yen(f.price)})`);render();
+}
+
+function acquireVehicle(mid,acq){
+  const m=VM[mid];const upfront=acq==='purchase'?m.price:0;const mo=acq==='purchase'?m.buyMo:m.leaseMo;
+  if(G.co.cash<upfront){addN('warn','資金が不足しています');return;}
+  if(!G.fac.garage){addN('warn','先に車庫を確保してください（施設タブ）');return;}
+  if(G.vehicles.length>=G.fac.garageCapacity){addN('warn','車庫の収容台数が上限です');return;}
+  G.co.cash-=upfront;
+  G.vehicles.push({id:uid(),modelId:mid,acquired:acq,mo,mileage:0,cond:100,driverId:null,totalRev:0});
+  addN('info',`${m.name} を${acq==='lease'?`リース契約 月額${yen(mo)}`:`購入 ${yen(upfront)}`}`);render();
+}
+
+function sellVehicle(vid){
+  const v=G.vehicles.find(x=>x.id===vid);if(!v)return;
+  const m=VM[v.modelId],isL=v.acquired==='lease',val=isL?0:Math.round(m.price*.5*(v.cond/100));
+  const lbl=isL?'リース解約':'売却';
+  askConfirm(`${m.name} を${lbl}しますか？${val>0?` (${yen(val)})`:'(返却金なし)'}`,()=>{
+    if(v.driverId)G.staff=G.staff.map(p=>p.id===v.driverId?{...p,vehicleId:null}:p);
+    G.vehicles=G.vehicles.filter(x=>x.id!==vid);G.co.cash+=val;
+    addN('info',`${m.name} ${lbl}${val>0?` (${yen(val)})`:''}`)
+  });
+}
+
+function hireStaff(cid){
+  const c=G.candidates.find(x=>x.id===cid);if(!c)return;
+  G.staff.push({...c,roles:['driver'],vehicleId:null,hireDate:new Date(G.time)});
+  G.candidates=G.candidates.filter(x=>x.id!==cid);
+  addN('info',`${c.name} を採用`);render();
+}
+
+function fireStaff(sid){
+  const p=G.staff.find(x=>x.id===sid);if(!p)return;
+  askConfirm(`${p.name} を解雇しますか？`,()=>{
+    if(p.vehicleId)G.vehicles=G.vehicles.map(v=>v.id===p.vehicleId?{...v,driverId:null}:v);
+    G.staff=G.staff.filter(x=>x.id!==sid);addN('info',`${p.name} を解雇`);
+  });
+}
+
+function toggleRole(sid,role){G.staff=G.staff.map(p=>{if(p.id!==sid)return p;const roles=p.roles.includes(role)?p.roles.filter(r=>r!==role):[...p.roles,role];return{...p,roles};});render();}
+function assignVehicle(sid,vid){
+  G.staff=G.staff.map(p=>{if(p.vehicleId===vid&&p.id!==sid)return{...p,vehicleId:null};if(p.id===sid)return{...p,vehicleId:vid||null};return p;});
+  G.vehicles=G.vehicles.map(v=>{if(v.driverId===sid)return{...v,driverId:null};if(v.id===vid)return{...v,driverId:sid};return v;});
+  render();
+}
+
+function applyPermit(){
+  if(!comply(G).all){addN('warn','全要件を満たしてから申請してください');return;}
+  G.phase='applied';G.permitApplied=new Date(G.time);
+  const ap=new Date(G.time);ap.setMonth(ap.getMonth()+2);G.permitReady=ap;
+  addN('info',`許可申請を提出（中国運輸局 広島運輸支局）。許可予定: ${ap.getFullYear()}/${ap.getMonth()+1}月`);render();
+}
+
+function takeLoan(idx){
+  const p=LOAN_PRESETS[idx];if(!p)return;
+  const mo=loanMonthly(p.amount,p.term);
+  askConfirm(`${p.label} (月返済 ${yen(mo)}・金利2.5%) で融資申請しますか？`,()=>{
+    G.loans.push({id:uid(),label:p.label,amount:p.amount,remaining:p.amount,monthly:mo,term:p.term,startDate:new Date(G.time)});
+    G.co.cash+=p.amount;addN('info',`銀行融資実行 ${yen(p.amount)} (月返済 ${yen(mo)}・${p.term}ヶ月)`);
+  });
+}
+
+function repayExtra(lid){
+  const loan=G.loans.find(l=>l.id===lid);if(!loan)return;
+  const amt=parseInt(document.getElementById('repay-'+lid)?.value||'0')*10000;
+  if(!amt||amt<=0){addN('warn','返済額を入力してください（万円）');return;}
+  if(amt>G.co.cash){addN('warn','現金が不足しています');return;}
+  if(amt>loan.remaining){addN('warn','返済額が残高を超えています');return;}
+  G.co.cash-=amt;loan.remaining-=amt;
+  if(loan.remaining<1000){G.loans=G.loans.filter(l=>l.id!==lid);addN('info','ローンを完済しました');}
+  else addN('info',`繰上返済 ${yen(amt)} (残高 ${yen(loan.remaining)})`);
+  render();
+}
+
+function resetGame(){
+  askConfirm('ゲームをリセットしますか？（全データが消えます）',()=>{stopTick();G=initState();});
+}
+
+function addN(type,msg){G.notifs.unshift({id:G.nid++,type,msg,time:new Date(G.time)});if(G.notifs.length>60)G.notifs.pop();}
+function toggleNotif(){G.showNotif=!G.showNotif;render();}
+function setTab(t){G.tab=t;render();}
+function setStaffTab(t){G.staffTab=t;render();}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render(){
+  document.getElementById('gtime').textContent=fmt(G.time);
+  const cd=document.getElementById('cashdsp');cd.textContent=yen(G.co.cash);cd.className='cash'+(G.co.cash<0?' neg':'');
+  const pb=document.getElementById('plbtn');pb.textContent=G.running?'▶ 進行中':'⏸ 停止';pb.className='plbtn '+(G.running?'run':'stp');
+  [1,5,10,20,50,100].forEach(s=>{const el=document.getElementById('sp'+s);if(el)el.className='spb'+(G.speed===s?' on':'');});
+  const nb=document.getElementById('nbadge');nb.textContent=G.notifs.length>9?'9+':G.notifs.length;nb.style.display=G.notifs.length?'flex':'none';
+  ['compliance','staff','vehicles','facility','finance'].forEach(t=>{document.getElementById('tab-'+t).className='tab'+(G.tab===t?' on':'');});
+  document.getElementById('tab-staff').textContent=`スタッフ(${G.staff.length})`;
+  document.getElementById('tab-vehicles').textContent=`車両(${G.vehicles.length})`;
+  const phases={setup:['開業準備中','pb-setup'],applied:['許可申請中','pb-applied'],operating:['営業中','pb-operating'],gameover:['ゲームオーバー','pb-gameover']};
+  const[pl,pc]=phases[G.phase]||['不明','pb-setup'];
+  document.getElementById('phasedsp').innerHTML=`<span class="pbadge ${pc}">${pl}</span>`;
+  const m=G.fin.cur,net=m.rev-m.dPay-m.fuel;
+  document.getElementById('sright').textContent=`当月粗利 ${yen(net)} ⛽¥${G.eco.fuel.toFixed(1)} ⚡¥${G.eco.elec.toFixed(1)}/kWh`;
+  const np=document.getElementById('np');np.style.display=G.showNotif?'flex':'none';
+  document.getElementById('nlist').innerHTML=G.notifs.length===0?'<div style="text-align:center;padding:20px;color:var(--sub);font-size:12px">通知なし</div>':G.notifs.map(n=>`<div class="ni"><div class="nd nd-${n.type}"></div><div><div class="nt">${n.msg}</div><div class="ntm">${fmt(n.time)}</div></div></div>`).join('');
+  const views={compliance:vCompliance,staff:vStaff,vehicles:vVehicles,facility:vFacility,finance:vFinance};
+  document.getElementById('main').innerHTML=(views[G.tab]||vCompliance)();
+
+  // confirm overlay
+  let co=document.getElementById('confirmOverlay');
+  if(G._confirm){
+    if(!co){co=document.createElement('div');co.id='confirmOverlay';co.className='overlay';document.getElementById('app').appendChild(co);}
+    co.innerHTML=`<div class="md"><div class="md-title">確認</div><div style="font-size:13px;color:var(--sub);margin-bottom:16px">${G._confirm.msg}</div><div style="display:flex;gap:8px"><button class="btn btn-d" style="flex:1" onclick="confirmYes()">はい</button><button class="btn btn-s" style="flex:1" onclick="confirmNo()">キャンセル</button></div></div>`;
+  }else if(co)co.remove();
+
+  // gameover overlay
+  let go=document.getElementById('gomModal');
+  if(G.phase==='gameover'&&!go){
+    go=document.createElement('div');go.id='gomModal';go.className='overlay';
+    go.innerHTML=`<div class="md"><div class="md-title">破産 💸</div><div style="font-size:13px;color:var(--sub);margin-bottom:16px">資金がマイナス1億円を超えました。<br>累計売上: ${yen(G.fin.hist.reduce((a,b)=>a+b.rev,0)+G.fin.cur.rev)}</div><button class="btn btn-p btn-bl" onclick="resetGame()">もう一度挑戦する</button></div>`;
+    document.getElementById('app').appendChild(go);
+  }else if(G.phase!=='gameover'&&go)go.remove();
+}
+
+// ============================================================
+// VIEWS
+// ============================================================
+function vCompliance(){
+  const c=comply(G);
+  const items=[
+    {icon:c.officer.ok?'✅':'❌',title:'役員（1名以上が専従・法令試験合格）',...c.officer},
+    {icon:c.drivers.ok?'✅':'❌',title:'運転者（第二種免許・車両台数以上確保）',...c.drivers},
+    {icon:c.opsManager.ok?'✅':'❌',title:'運行管理者（国家資格者の選任）',...c.opsManager},
+    {icon:c.maintManager.ok?'✅':'❌',title:`整備管理者（${G.vehicles.length>=5?'5台以上のため必須':'現在不要'}）`,...c.maintManager},
+    {icon:c.minVehicles.ok?'✅':'❌',title:'最低車両台数（1営業所5台以上）',...c.minVehicles},
+    {icon:c.facility.ok?'✅':'❌',title:'施設要件（営業所・車庫・休憩施設）',...c.facility},
+    {icon:c.capital.ok?'✅':'❌',title:'自己資金（計画費用の100%以上）',...c.capital},
+  ];
+  let banner='';
+  if(G.phase==='setup')banner=c.all?`<div class="ib ib-ok">✅ 全要件クリア！許可申請が可能です。</div>`:`<div class="ib ib-warn">⚠️ 未充足項目 ${items.filter(i=>!i.ok).length}件。全て満たしてから申請してください。</div>`;
+  else if(G.phase==='applied')banner=`<div class="ib ib-info">📋 許可申請中（中国運輸局 広島運輸支局）。上部「▶」で時間を進めてください。</div>`;
+  else if(G.phase==='operating')banner=c.all?`<div class="ib ib-ok">✅ コンプライアンス良好</div>`:`<div class="ib ib-err">🚨 違反あり。抜き打ち監査で罰則が課されます。</div>`;
+  const permitBtn=G.phase==='setup'?`<button class="apply-btn" ${c.all?'':'disabled'} onclick="applyPermit()">📋 ${c.all?'許可申請を提出する（中国運輸局 広島運輸支局）':'全要件を満たしてから申請できます'}</button>`:'';
+  const list=items.map(i=>`<div class="ci"><div class="ci-ic">${i.icon}</div><div class="ci-body"><div class="ci-t">${i.title}</div><div class="ci-d">${i.detail}</div><div class="ci-law">📖 ${i.law}</div></div></div>`).join('');
+  return `<div class="card">${banner}<div class="ct">法令コンプライアンスチェック</div>${list}${permitBtn}</div><div style="text-align:right"><button class="btn btn-s btn-sm" onclick="resetGame()">↺ リセット</button></div>`;
+}
+
+function vStaff(){
+  const tabs=`<div style="display:flex;gap:4px;margin-bottom:10px">
+    <button class="btn btn-sm ${G.staffTab!=='applicants'?'btn-p':'btn-s'}" onclick="setStaffTab('hired')">雇用中 (${G.staff.length})</button>
+    <button class="btn btn-sm ${G.staffTab==='applicants'?'btn-p':'btn-s'}" onclick="setStaffTab('applicants')">応募者 (${G.candidates.length})</button>
+  </div>`;
+  if(G.staffTab==='applicants'){
+    const cards=G.candidates.map(c=>{
+      const qs=[c.lic2?'<span class="qb qb-ok">第二種免許</span>':'<span class="qb qb-ng">免許なし</span>',
+        c.lawPassed?'<span class="qb qb-ok">法令試験合格</span>':'',c.canOfficer?'<span class="qb qb-ok">役員就任可</span>':'',
+        c.opsQ?'<span class="qb qb-ok">運行管理者</span>':'',c.maintQ?'<span class="qb qb-ok">整備管理者</span>':''].filter(Boolean).join('');
+      return `<div class="sc"><div class="sc-top"><div class="sc-info"><div class="sn">${c.name}</div><div class="sm">${c.age}歳 ・ 経験${c.exp}年 ・ 月給${yen(c.salary)} ・ 歩合${Math.round(c.cr*100)}%</div><div><span class="arc-tag">🏷 ${c.arcLabel}</span></div></div><button class="btn btn-p btn-sm" onclick="hireStaff('${c.id}')">採用</button></div><div style="margin-top:5px">${qs}</div>${statBars(c.stats)}</div>`;
+    }).join('');
+    return tabs+(G.candidates.length?cards:'<div class="card" style="text-align:center;color:var(--sub);padding:20px">応募者なし</div>');
+  }
+  const cards=G.staff.map(p=>{
+    const avail=[{id:'driver',label:'運転手',cls:'rt-dr',can:p.lic2},{id:'officer',label:'役員(専従)',cls:'rt-of',can:p.canOfficer&&p.lawPassed},{id:'opsmanager',label:'運行管理者',cls:'rt-op',can:p.opsQ},{id:'maintmanager',label:'整備管理者',cls:'rt-ma',can:p.maintQ}];
+    const roleTags=avail.filter(r=>r.can).map(r=>{const on=p.roles.includes(r.id);return`<button class="rt ${on?r.cls:'rt-off'}" onclick="toggleRole('${p.id}','${r.id}')">${on?'✓ ':'+'}${r.label}</button>`;}).join('');
+    const vsel=p.roles.includes('driver')?`<div style="margin-top:6px"><select onchange="assignVehicle('${p.id}',this.value)"><option value="">車両: (未割当)</option>${G.vehicles.filter(v=>!v.driverId||v.driverId===p.id).map(v=>`<option value="${v.id}" ${v.driverId===p.id?'selected':''}>${VM[v.modelId].name}${v.acquired==='lease'?' [L]':''}</option>`).join('')}</select></div>`:'';
+    return `<div class="sc"><div class="sc-top"><div class="sc-info"><div class="sn">${p.name}</div><div class="sm">${p.age}歳 ・ 経験${p.exp}年 ・ 月給${yen(p.salary)} ・ 歩合${Math.round(p.cr*100)}%</div><div><span class="arc-tag">🏷 ${p.arcLabel}</span></div></div><button class="btn btn-d btn-sm" onclick="fireStaff('${p.id}')">解雇</button></div><div style="margin-top:5px">${roleTags}</div>${vsel}${statBars(p.stats)}</div>`;
+  }).join('');
+  return tabs+(G.staff.length?cards:'<div class="card" style="text-align:center;color:var(--sub);padding:20px">スタッフ未雇用</div>');
+}
+
+function statBars(s){
+  return`<div class="sbw">${[['運転',s.driving],['接客',s.service],['地理',s.geo],['体力',s.stamina],['意欲',s.motivation]].map(([l,v])=>`<div class="sr"><span class="sr-l">${l}</span><div class="sr-b"><div class="sr-f" style="width:${v}%"></div></div><span class="sr-v">${v}</span></div>`).join('')}</div>`;
+}
+
+function vVehicles(){
+  const summary=`<div class="card" style="padding:8px 12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px"><span>保有: <strong>${G.vehicles.length}台</strong></span><span>車庫: ${G.fac.garageCapacity}台収容</span><span style="color:${G.vehicles.length>=5?'var(--green)':'var(--red)'}">最低5台必要</span></div></div>`;
+  const list=G.vehicles.length===0?'<div class="card" style="text-align:center;color:var(--sub);padding:20px">車両なし</div>':G.vehicles.map(v=>{const m=VM[v.modelId],dr=G.staff.find(p=>p.id===v.driverId),cc=v.cond<40?'var(--red)':v.cond<70?'var(--amber)':'var(--green)';return`<div class="vc"><div style="display:flex;justify-content:space-between"><div style="flex:1"><div style="font-weight:600;font-size:13px">${m.name}${m.ev?'<span class="ev-tag">EV</span>':''}${v.acquired==='lease'?'<span class="lease-tag">リース</span>':''}</div><div style="font-size:11px;color:var(--sub)">${Math.round(v.mileage).toLocaleString()}km ・ 状態<span style="color:${cc}">${v.cond.toFixed(0)}%</span> ・ 月額${yen(v.mo)} ・ 累計売上${yen(v.totalRev||0)}</div></div><button class="btn btn-s btn-sm" onclick="sellVehicle('${v.id}')">${v.acquired==='lease'?'解約':'売却'}</button></div><div class="cbar"><div class="cbar-f" style="width:${v.cond}%;background:${cc}"></div></div><div style="font-size:12px;color:var(--sub);margin-top:5px">担当: ${dr?dr.name:'<span style="color:var(--red)">未割当</span>'}</div></div>`;}).join('');
+  const buy=`<div class="card"><div class="ct">車両の取得</div>${!G.fac.garage?'<div class="ib ib-warn">先に車庫を確保してください（施設タブ）</div>':''}<div style="font-size:11px;color:var(--sub);margin-bottom:8px"><strong>購入</strong>: 初期費用あり月額低め ／ <strong>リース</strong>: 初期費用なし月額高め</div>${Object.entries(VM).map(([id,m])=>`<div style="border:1px solid var(--border);border-radius:9px;padding:10px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><div style="font-weight:600;font-size:13px">${m.name}</div>${m.ev?'<span class="ev-tag">EV ⚡</span>':''}</div><div style="font-size:11px;color:var(--sub);margin-bottom:8px">${m.ev?`電費: ${m.kwhPkm}kWh/km`:`燃費: ${m.fuel}km/L`} ・ 売上係数×${m.rm}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="border:1px solid var(--border);border-radius:7px;padding:8px;text-align:center"><div style="font-size:11px;color:var(--sub)">購入</div><div style="font-weight:700;font-size:14px;margin:2px 0">${yen(m.price)}</div><div style="font-size:10px;color:var(--sub)">月額 ${yen(m.buyMo)}</div><button class="btn btn-p btn-sm" style="margin-top:6px;width:100%" onclick="acquireVehicle('${id}','purchase')" ${G.co.cash<m.price||!G.fac.garage||G.vehicles.length>=G.fac.garageCapacity?'disabled':''}>購入する</button></div><div style="border:1px solid #f5c6cb;border-radius:7px;padding:8px;text-align:center;background:#fff8f9"><div style="font-size:11px;color:#c2185b">リース</div><div style="font-weight:700;font-size:14px;margin:2px 0;color:#c2185b">¥0</div><div style="font-size:10px;color:var(--sub)">月額 ${yen(m.leaseMo)}</div><button class="btn btn-sm" style="margin-top:6px;width:100%;background:#fce4ec;color:#c2185b;font-weight:600" onclick="acquireVehicle('${id}','lease')" ${!G.fac.garage||G.vehicles.length>=G.fac.garageCapacity?'disabled':''}>リース契約</button></div></div></div>`).join('')}</div>`;
+  return summary+list+buy;
+}
+
+function vFacility(){
+  const f=G.fac;
+  const items=[{id:'office',done:f.office,desc:'事業拠点。車庫に併設が原則。3年以上の使用権原が必要。',...FC.office},{id:'g10',done:f.garage&&f.garageCapacity>=10,desc:'全車両を収容できる広さ。営業所から概ね2km以内。',...FC.g10},{id:'g20',done:f.garage&&f.garageCapacity>=20,desc:'大型車庫。10台超の規模に対応。',...FC.g20},{id:'rest',done:f.rest,desc:'営業所または車庫に併設。乗務員の休憩・仮眠のための施設。',...FC.rest}];
+  const sum=`<div class="card"><div class="ct">施設状況</div><div style="font-size:13px;display:grid;gap:4px"><div>営業所: ${f.office?'<span style="color:var(--green)">✓ 確保済</span>':'<span style="color:var(--red)">✗ 未確保</span>'}</div><div>車庫: ${f.garage?`<span style="color:var(--green)">✓ ${f.garageCapacity}台収容</span>`:'<span style="color:var(--red)">✗ 未確保</span>'}</div><div>休憩施設: ${f.rest?'<span style="color:var(--green)">✓ 設置済</span>':'<span style="color:var(--red)">✗ 未設置</span>'}</div><div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">月額合計: <strong>${yen(f.mo)}</strong></div></div></div>`;
+  return sum+items.map(i=>`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-weight:600;font-size:13px">${i.label} ${i.done?'<span style="color:var(--green)">✓</span>':''}</div><div style="font-size:11px;color:var(--sub);margin-top:2px">${i.desc}</div><div style="font-size:12px;margin-top:4px">初期費用 <strong>${yen(i.price)}</strong> ・ 月額 ${i.mo?yen(i.mo):'なし'}</div></div><button class="btn btn-p btn-sm" onclick="buyFac('${i.id}')" ${i.done||G.co.cash<i.price?'disabled':''}>${i.done?'取得済':'取得'}</button></div></div>`).join('');
+}
+
+function vFinance(){
+  const h=G.fin.hist,m=G.fin.cur;
+  const totRev=h.reduce((a,b)=>a+b.rev,0)+m.rev,totPro=h.reduce((a,b)=>a+(b.profit||0),0);
+  const net=m.rev-m.dPay-m.fuel;
+  const totalDebt=G.loans.reduce((a,l)=>a+l.remaining,0);
+  const estCorpTax=calcCorpTax(G.taxes.corpFYProfit);
+
+  const ov=`<div class="card"><div class="ct">財務概要</div><div class="sg">
+    <div class="sb"><div class="sl">現金</div><div class="sv ${G.co.cash<0?'neg':''}">${yen(G.co.cash)}</div></div>
+    <div class="sb"><div class="sl">借入残高</div><div class="sv ${totalDebt>0?'neg':''}">${yen(totalDebt)}</div></div>
+    <div class="sb"><div class="sl">累計利益</div><div class="sv ${totPro>=0?'pos':'neg'}">${yen(totPro)}</div></div>
+    <div class="sb"><div class="sl">累計売上</div><div class="sv">${yen(totRev)}</div></div>
+  </div></div>`;
+
+  // 借入管理
+  const loanList=G.loans.length===0?'<div style="text-align:center;padding:10px;color:var(--sub);font-size:12px">借入なし</div>':G.loans.map(l=>{
+    const remMo=Math.ceil(l.remaining/l.monthly);
+    return`<div class="loan-row"><div class="loan-name">${l.label}</div>
+      <div class="loan-meta"><span>残高 ${yen(l.remaining)}</span><span>月返済 ${yen(l.monthly)}</span><span>残約${remMo}ヶ月</span></div>
+      <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+        <input type="number" id="repay-${l.id}" placeholder="繰上返済額(万円)" style="flex:1">
+        <button class="btn btn-s btn-sm" onclick="repayExtra('${l.id}')">繰上返済</button>
+      </div></div>`;
+  }).join('');
+  const loanPresetOpts=LOAN_PRESETS.map((p,i)=>`<option value="${i}">${p.label} → 月返済 ${yen(loanMonthly(p.amount,p.term))}</option>`).join('');
+  const loanSec=`<div class="card"><div class="ct">借入管理 <span style="font-size:11px;color:var(--sub);font-weight:400">金利 年2.5%</span></div>
+    ${loanList}
+    <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:6px">新規融資申請</div>
+      <select id="loanPresetSel" style="width:100%;margin-bottom:6px">${loanPresetOpts}</select>
+      <button class="btn btn-p btn-sm btn-bl" onclick="takeLoan(parseInt(document.getElementById('loanPresetSel').value))">融資申請</button>
+    </div></div>`;
+
+  // 税金
+  const nextQtr=(()=>{const m=G.time.getMonth();const qMonths=[2,5,8,11];const next=qMonths.find(q=>q>m)??2;const yr=next<m?G.time.getFullYear()+1:G.time.getFullYear();return`${yr}/${String(next+1).padStart(2,'0')}末`;})();
+  const taxHist=G.taxes.history.length===0?'<div style="font-size:11px;color:var(--sub);padding:4px 0">納税履歴なし</div>':G.taxes.history.slice().reverse().slice(0,6).map(t=>`<div class="tax-row"><span class="tax-lbl">${fmt(t.date).slice(0,7)} ${t.type}</span><span class="tax-val" style="color:var(--red)">-${yen(t.amount)}</span></div>`).join('');
+  const taxSec=`<div class="card"><div class="ct">税金</div>
+    <div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">消費税（四半期納付・実効3.6%）</div>
+    <div class="tax-row"><span class="tax-lbl">今期未払累積</span><span class="tax-val">${yen(G.taxes.ctAccrued)}</span></div>
+    <div class="tax-row"><span class="tax-lbl">次回納付予定</span><span class="tax-val">${nextQtr}</span></div>
+    <div class="tax-row"><span class="tax-lbl">累計納付済</span><span class="tax-val">${yen(G.taxes.ctPaid)}</span></div>
+    <div style="font-size:12px;font-weight:600;color:var(--sub);margin:10px 0 6px">法人税等（3月決算・4月申告）</div>
+    <div class="ib ib-info" style="font-size:11px;margin-bottom:6px">法人税(15〜23.2%) + 法人住民税 + 法人事業税 = 実効約35% ／ 均等割¥7万/年（赤字でも課税）</div>
+    <div class="tax-row"><span class="tax-lbl">当期累積利益（FY）</span><span class="tax-val ${G.taxes.corpFYProfit>=0?'':'neg'}">${yen(G.taxes.corpFYProfit)}</span></div>
+    <div class="tax-row"><span class="tax-lbl">推定年税額</span><span class="tax-val" style="color:var(--red)">${yen(estCorpTax)}</span></div>
+    <div class="tax-row"><span class="tax-lbl">累計納付済</span><span class="tax-val">${yen(G.taxes.corpPaid)}</span></div>
+    <div style="font-size:12px;font-weight:600;color:var(--sub);margin:10px 0 6px">納税履歴</div>${taxHist}
+  </div>`;
+
+  const cur=`<div class="card"><div class="ct">今月の暫定P/L (${m.month})</div>
+    <div class="fr"><span>売上</span><span>${yen(m.rev)}</span></div>
+    <div class="fr fi"><span>- 運転手歩合</span><span>${yen(m.dPay)}</span></div>
+    <div class="fr fi"><span>- 燃料・電気費</span><span>${yen(m.fuel)}</span></div>
+    <div class="fd"></div>
+    <div class="fr"><strong>粗利（月末費用前）</strong><strong style="color:${net>=0?'var(--green)':'var(--red)'}">${yen(net)}</strong></div>
+  </div>`;
+
+  const hist=h.length===0?'<div class="card" style="text-align:center;color:var(--sub);padding:16px">まだ月次決算なし</div>':[...h].reverse().map(b=>`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><strong>${b.month}</strong><strong style="color:${b.profit>=0?'var(--green)':'var(--red)'}">${yen(b.profit)} (${b.rev>0?(b.profit/b.rev*100).toFixed(1):'0.0'}%)</strong></div>
+    <div class="fr"><span>売上</span><span>${yen(b.rev)}</span></div>
+    <div class="fr fi"><span>- 運転手歩合</span><span>${yen(b.dPay)}</span></div>
+    <div class="fr fi"><span>- 燃料・電気費</span><span>${yen(b.fuel)}</span></div>
+    <div class="fr fi"><span>- 車両月額費</span><span>${yen(b.vmo)}</span></div>
+    <div class="fr fi"><span>- 施設費</span><span>${yen(b.fmo)}</span></div>
+    <div class="fr fi"><span>- スタッフ給与</span><span>${yen(b.sal)}</span></div>
+    <div class="fr fi"><span>- メンテ費</span><span>${yen(b.maint)}</span></div>
+    <div class="fr fi"><span>- ローン返済</span><span>${yen(b.loanPay||0)}</span></div>
+    <div class="fd"></div>
+    <div class="fr"><strong>当期利益</strong><strong style="color:${b.profit>=0?'var(--green)':'var(--red)'}">${yen(b.profit)}</strong></div>
+  </div>`).join('');
+
+  return ov+loanSec+taxSec+cur+hist;
+}
+
+render();
+</script>
+</body>
+</html>
