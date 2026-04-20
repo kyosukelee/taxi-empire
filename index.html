@@ -120,6 +120,7 @@ select,input[type=number],input[type=text]{border:1px solid var(--border);border
       <div style="display:flex;gap:4px;align-items:center">
         <button class="btn btn-s btn-sm" onclick="saveGame()" title="セーブ">💾</button>
         <button class="btn btn-s btn-sm" onclick="loadGame()" title="ロード">📂</button>
+        <button class="btn btn-s btn-sm" id="fsbtn" onclick="toggleFS()" title="全画面">⛶</button>
         <button class="nbtn" onclick="toggleNotif()">🔔<span id="nbadge" class="nbadge" style="display:none"></span></button>
       </div>
     </div>
@@ -631,6 +632,17 @@ function loadGame(){
   input.click();
 }
 
+function toggleFS(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement){
+    (el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen).call(el);
+  }else{
+    (document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen).call(document);
+  }
+}
+document.addEventListener('fullscreenchange',()=>{
+  const btn=document.getElementById('fsbtn');if(btn)btn.textContent=document.fullscreenElement?'✕':'⛶';
+});
 function resetGame(){askConfirm('ゲームをリセットしますか？（全データが消えます）',()=>{stopTick();G=initState();});}
 function addN(type,msg){G.notifs.unshift({id:G.nid++,type,msg,time:new Date(G.time)});if(G.notifs.length>80)G.notifs.pop();}
 function toggleNotif(){G.showNotif=!G.showNotif;render();}
