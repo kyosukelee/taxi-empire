@@ -25,7 +25,7 @@ body{font-family:var(--fn);background:var(--bg);color:var(--text);height:100vh;d
 .tab{flex:1;min-width:46px;padding:8px 2px;text-align:center;font-size:10px;font-weight:500;color:var(--sub);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;border-top:none;border-left:none;border-right:none;background:none}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent);background:#f0f6ff}
 #main{flex:1;overflow-y:auto;padding:10px}
-#sbar{background:var(--surface);border-top:1px solid var(--border);padding:4px 12px;display:flex;justify-content:space-between;font-size:10px;color:var(--sub);flex-shrink:0;gap:6px}
+#sbar{background:var(--surface);border-top:1px solid var(--border);padding:4px 12px;display:flex;justify-content:space-between;font-size:10px;color:var(--sub);flex-shrink:0;gap:4px;flex-wrap:wrap}
 #sbar span{font-variant-numeric:tabular-nums;white-space:nowrap}
 .pbadge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
 .pb-setup{background:#fff3cd;color:#856404}.pb-applied{background:#cce5ff;color:#004085}.pb-operating{background:#d4edda;color:#155724}.pb-gameover{background:#f8d7da;color:#721c24}
@@ -89,6 +89,11 @@ body{font-family:var(--fn);background:var(--bg);color:var(--text);height:100vh;d
 .cf-row{display:flex;justify-content:space-between;padding:2px 4px;font-size:12px;font-variant-numeric:tabular-nums}
 .cf-ind{padding-left:14px;color:var(--sub)}
 .cf-sub{display:flex;justify-content:space-between;border-top:1px solid var(--border);padding:4px;font-size:12px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+/* AR badges */
+.pay-badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:3px}
+.pay-cash{background:#e8f5e9;color:#2e7d32}
+.pay-credit{background:#e3f2fd;color:#1565c0}
+.pay-app{background:#fce4ec;color:#ad1457}
 #np{position:absolute;inset:0;background:var(--surface);z-index:100;display:none;flex-direction:column}
 #np.show{display:flex}
 .nh{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
@@ -149,69 +154,71 @@ select,input[type=number]{border:1px solid var(--border);border-radius:6px;paddi
 // CONSTANTS
 // ============================================================
 const VM={
-  kei:    {name:'軽自動車',    price:1200000,buyMo:30000, leaseMo:35000, fuel:20,   rm:1.0, ev:false},
-  comfort:{name:'コンフォート',price:2500000,buyMo:50000, leaseMo:58000, fuel:13,   rm:1.2, ev:false},
-  jpntaxi:{name:'JPN TAXI',   price:3300000,buyMo:60000, leaseMo:72000, fuel:19,   rm:1.35,ev:false},
+  kei:    {name:'軽自動車',    price:1200000,buyMo:30000, leaseMo:35000, fuel:20,    rm:1.0, ev:false},
+  comfort:{name:'コンフォート',price:2500000,buyMo:50000, leaseMo:58000, fuel:13,    rm:1.2, ev:false},
+  jpntaxi:{name:'JPN TAXI',   price:3300000,buyMo:60000, leaseMo:72000, fuel:19,    rm:1.35,ev:false},
   leaf:   {name:'LEAF (EV)',  price:4000000,buyMo:40000, leaseMo:88000, kwhPkm:.167,rm:1.3, ev:true},
 };
-
 const DEM=[.4,.4,.4,.4,.4,.5,.9,1.6,1.5,1.0,.7,.7,.7,.7,.8,.9,1.2,1.3,1.5,1.8,1.8,1.8,2.2,2.5];
 const BASE_REV=2800;
 
-// 季節需要係数 (1月=index 0 〜 12月=index 11)
+// 全タク連の月別傾向・業界実態に基づく季節需要係数
 const SEASONAL=[
-  1.08, // 1月: 正月・成人式・新年会
-  1.00, // 2月: 通常
-  0.95, // 3月: 春の移動期（やや閑散）
-  0.90, // 4月: 新生活スタート（落ち着き）
-  1.05, // 5月: GW・春の行楽
-  0.88, // 6月: 梅雨（悪天候で多少増えるが総じて低め）
-  0.88, // 7月: 夏の閑散
-  0.82, // 8月: お盆・帰省ラッシュで市内空き
-  0.95, // 9月: 初秋・回復期
-  1.02, // 10月: 秋の行楽・学会・出張
-  1.12, // 11月: 秋の繁忙・紅葉観光
-  1.35, // 12月: 忘年会・クリスマス・年末
+  0.85,1.00, // 1月: 正月明け閑散 / 2月: 年間最閑散
+  1.15,1.10, // 3月: 歓送迎会・年度末 / 4月: 花見・歓迎会
+  1.05,1.00, // 5月: GW前後 / 6月: ボーナス・梅雨雨天
+  0.85,0.78, // 7月: 夏休み閑散 / 8月: お盆・年間最低
+  0.92,1.00, // 9月: 回復期 / 10月: 秋の行楽・出張
+  1.08,1.40, // 11月: 忘年会前哨戦 / 12月: 忘年会・年末最繁忙
 ];
 const SEASON_LBL=[
-  '冬【正月・新年会】','冬【通常】','春【移動期】','春【閑散】',
-  'GW【春陽気】','梅雨【閑散】','夏【閑散】','お盆【市内空き】',
-  '初秋【回復期】','秋【行楽・出張】','秋【繁忙・観光】','年末【忘年会】',
+  '1月【正月明け閑散】','2月【年間最閑散】','3月【歓送迎会・年度末】','4月【花見・歓迎会】',
+  '5月【GW前後】','6月【ボーナス・梅雨雨天】','7月【夏休み閑散】','8月【お盆・年間最低】',
+  '9月【回復期】','10月【秋の行楽・出張】','11月【忘年会前哨戦】','12月【忘年会・年末最繁忙】',
 ];
 
 // 競合他社（架空）
 const COMP_DEFS=[
-  {id:'c1',name:'錦城タクシー',    color:'#e74c3c',initShare:28,initVehicles:120,aggression:.6},
-  {id:'c2',name:'旭日交通',        color:'#e67e22',initShare:22,initVehicles:85, aggression:.4},
-  {id:'c3',name:'緑川タクシー',    color:'#8e44ad',initShare:18,initVehicles:65, aggression:.3},
+  {id:'c1',name:'錦城タクシー',     color:'#e74c3c',initShare:28,initVehicles:120,aggression:.6},
+  {id:'c2',name:'旭日交通',         color:'#e67e22',initShare:22,initVehicles:85, aggression:.4},
+  {id:'c3',name:'緑川タクシー',     color:'#8e44ad',initShare:18,initVehicles:65, aggression:.3},
   {id:'c4',name:'西部交通グループ', color:'#27ae60',initShare:15,initVehicles:50, aggression:.5},
 ];
 
-// 施設カタログ（段階的アップグレード）
+// 施設カタログ
 const FAC_CATALOG={
-  office1:   {name:'営業所（小）',      price:3000000, mo:200000,  cap:0,   req:null,      desc:'開業用小規模営業所。使用権原3年以上'},
-  office2:   {name:'営業所（中）',      price:2000000, mo:150000,  cap:0,   req:'office1', desc:'20台規模に対応。管理体制強化'},
-  office3:   {name:'営業所（大）',      price:4000000, mo:250000,  cap:0,   req:'office2', desc:'50台規模の大型営業所'},
-  office4:   {name:'営業所（広域拠点）',price:8000000, mo:400000,  cap:0,   req:'office3', desc:'100台以上対応の広域営業拠点。人事・経理部門設置'},
-  garage1:   {name:'車庫（10台）',      price:5000000, mo:300000,  cap:10,  req:null,      desc:'10台収容。営業所から2km以内'},
-  garage2:   {name:'車庫（20台）',      price:4000000, mo:210000,  cap:20,  req:'garage1', desc:'20台に拡張'},
-  garage3:   {name:'車庫（35台）',      price:7000000, mo:350000,  cap:35,  req:'garage2', desc:'35台の大型車庫'},
-  garage4:   {name:'車庫（60台）',      price:12000000,mo:550000,  cap:60,  req:'garage3', desc:'60台、大手向け規模'},
-  garage5:   {name:'車庫（100台）',     price:22000000,mo:900000,  cap:100, req:'garage4', desc:'100台収容の大規模車庫。複数ブロック管理'},
-  garage6:   {name:'車庫（200台）',     price:45000000,mo:1700000, cap:200, req:'garage5', desc:'200台収容の超大型車庫。地域最大規模'},
-  rest:      {name:'休憩・睡眠施設',    price:500000,  mo:0,       cap:0,   req:'office1', desc:'乗務員の休憩・仮眠施設（法令必須）'},
-  wash:      {name:'洗車・清掃設備',    price:800000,  mo:20000,   cap:0,   req:'garage1', desc:'車両清潔度UP → 売上+5%'},
-  ev_chr:    {name:'EV充電スタンド',    price:2000000, mo:30000,   cap:0,   req:'garage1', desc:'EV車両の電費-10%'},
-  dispatch:  {name:'配車センター',      price:5000000, mo:100000,  cap:0,   req:'office2', desc:'AI配車最適化 → 全車両売上+8%'},
-  maintshop: {name:'整備工場',         price:4000000, mo:80000,   cap:0,   req:'garage2', desc:'自社整備実施 → メンテ費-20%'},
-  training:  {name:'研修センター',      price:3000000, mo:60000,   cap:0,   req:'office2', desc:'採用後スキルUP → 運転手能力補正+5%'},
+  office1:  {name:'営業所（小）',      price:3000000, mo:200000,  cap:0,  req:null,       desc:'開業用小規模営業所。使用権原3年以上'},
+  office2:  {name:'営業所（中）',      price:2000000, mo:150000,  cap:0,  req:'office1',  desc:'20台規模に対応。管理体制強化'},
+  office3:  {name:'営業所（大）',      price:4000000, mo:250000,  cap:0,  req:'office2',  desc:'50台規模の大型営業所'},
+  office4:  {name:'営業所（広域拠点）',price:8000000, mo:400000,  cap:0,  req:'office3',  desc:'100台以上対応。人事・経理部門設置'},
+  garage1:  {name:'車庫（10台）',      price:5000000, mo:300000,  cap:10, req:null,       desc:'10台収容。営業所から2km以内'},
+  garage2:  {name:'車庫（20台）',      price:4000000, mo:210000,  cap:20, req:'garage1',  desc:'20台に拡張'},
+  garage3:  {name:'車庫（35台）',      price:7000000, mo:350000,  cap:35, req:'garage2',  desc:'35台の大型車庫'},
+  garage4:  {name:'車庫（60台）',      price:12000000,mo:550000,  cap:60, req:'garage3',  desc:'60台、大手向け規模'},
+  garage5:  {name:'車庫（100台）',     price:22000000,mo:900000,  cap:100,req:'garage4',  desc:'100台収容の大規模車庫'},
+  garage6:  {name:'車庫（200台）',     price:45000000,mo:1700000, cap:200,req:'garage5',  desc:'200台収容の超大型車庫'},
+  rest:     {name:'休憩・睡眠施設',    price:500000,  mo:0,       cap:0,  req:'office1',  desc:'乗務員の休憩・仮眠施設（法令必須）'},
+  wash:     {name:'洗車・清掃設備',    price:800000,  mo:20000,   cap:0,  req:'garage1',  desc:'車両清潔度UP → 売上+5%'},
+  ev_chr:   {name:'EV充電スタンド',    price:2000000, mo:30000,   cap:0,  req:'garage1',  desc:'EV車両の電費-10%'},
+  dispatch: {name:'配車センター',      price:5000000, mo:100000,  cap:0,  req:'office2',  desc:'AI配車最適化 → 全車両売上+8%'},
+  maintshop:{name:'整備工場',          price:4000000, mo:80000,   cap:0,  req:'garage2',  desc:'自社整備実施 → メンテ費-20%'},
+  training: {name:'研修センター',      price:3000000, mo:60000,   cap:0,  req:'office2',  desc:'採用後スキルUP → 運転手能力+5%'},
 };
 const FAC_GROUPS=[
-  {label:'営業所',      items:['office1','office2','office3','office4']},
-  {label:'車庫',        items:['garage1','garage2','garage3','garage4','garage5','garage6']},
-  {label:'必須設備',    items:['rest']},
+  {label:'営業所',        items:['office1','office2','office3','office4']},
+  {label:'車庫',          items:['garage1','garage2','garage3','garage4','garage5','garage6']},
+  {label:'必須設備',      items:['rest']},
   {label:'オプション設備',items:['wash','ev_chr','dispatch','maintshop','training']},
 ];
+
+// ============================================================
+// 決済手段・未収金設定
+// ============================================================
+const PAY_MIX={cash:.40,credit:.35,app:.25};
+// 決済手数料率
+const PAY_FEE={credit:.035,app:.150};
+// 翌月入金 (credit: クレカ加盟店精算, app: GOタクシー等プラットフォーム精算)
+const PAY_NAME={cash:'現金・即時',credit:'クレジットカード',app:'アプリ配車決済'};
 
 // 協会けんぽ広島 事業主負担率
 const SI_RATE=0.16835;
@@ -256,7 +263,7 @@ function rnd(a,b){return a+Math.floor(Math.random()*(b-a+1));}
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 function yen(n){const v=Math.round(n);if(Math.abs(v)>=100000000)return`¥${(v/100000000).toFixed(2)}億`;if(Math.abs(v)>=10000)return`¥${(v/10000).toFixed(1)}万`;return`¥${v.toLocaleString()}`;}
 function fmt(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
-function skillMult(p,trainingBuilt){const bonus=trainingBuilt?1.05:1.0;return(0.5+(p.stats.driving+p.stats.service+p.stats.geo)/300)*(p.stats.motivation/100)*bonus;}
+function skillMult(p,train){return(0.5+(p.stats.driving+p.stats.service+p.stats.geo)/300)*(p.stats.motivation/100)*(train?1.05:1.0);}
 function loanMonthly(a,t){const r=0.025/12;return Math.round(a*r/(1-Math.pow(1+r,-t)));}
 function calcCorpTax(p){if(p<=0)return 70000;const t=p<=8000000?p*.15:8000000*.15+(p-8000000)*.232;return Math.max(70000,Math.round(t*1.42));}
 
@@ -276,13 +283,28 @@ function initState(){
     eco:{fuel:170,elec:28},
     loans:[],
     taxes:{ctAccrued:0,ctPaid:0,corpFYProfit:0,corpPaid:0,history:[]},
-    cfAccum:{opIn:0,opOut:0,vPurchase:0,vSale:0,facPurchase:0,loanIn:0,loanPrincipal:0},
+    // 未収金（前月の未入金残高）
+    ar:{credit:0,app:0},
+    // CF累計
+    cfAccum:{opCashIn:0,opCashOut:0,vPurchase:0,vSale:0,facPurchase:0,loanIn:0,loanPrincipal:0,arSettled:0},
     competitors:COMP_DEFS.map(d=>({...d,share:d.initShare,vehicles:d.initVehicles,trend:0})),
     _confirm:null,
     notifs:[],nid:1,showNotif:false,
   };
 }
-function newBucket(d){return{month:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,rev:0,dPay:0,fuel:0,vmo:0,fmo:0,sal:0,socialIns:0,maint:0,depreciation:0,loanInterest:0,profit:null};}
+
+function newBucket(d){
+  return{
+    month:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+    rev:0,                // 発生主義売上（現金+未収金）
+    cashRev:0,            // うち現金即時収入
+    creditRev:0,          // うちクレカ（翌月入金）
+    appRev:0,             // うちアプリ（翌月入金）
+    arFees:0,             // 決済手数料（費用）
+    dPay:0,fuel:0,vmo:0,fmo:0,sal:0,socialIns:0,maint:0,depreciation:0,loanInterest:0,
+    profit:null,
+  };
+}
 
 function genCandidates(n){
   const list=Array.from({length:n},()=>{
@@ -317,8 +339,7 @@ function comply(s){
   const hasOffice=Object.keys(s.fac.built).some(k=>k.startsWith('office'));
   const facOk=hasOffice&&s.fac.garageCapacity>=vc&&s.fac.hasRest;
   const mo=s.vehicles.reduce((a,v)=>a+v.mo,0)+s.fac.mo+st.reduce((a,p)=>a+p.salary,0);
-  const reqCap=Math.max(5000000,mo*3);
-  const capOk=s.co.cash>=reqCap;
+  const reqCap=Math.max(5000000,mo*3);const capOk=s.co.cash>=reqCap;
   return{
     officer:{ok:hasOfficer,detail:hasOfficer?'役員が専従・法令試験合格済':'法令試験合格済の専従役員が未選任',law:'道路運送法§9'},
     drivers:{ok:dOk,detail:`運転手${drivers.length}名 ／ 車両${vc}台`,law:'道路運送法：第二種運転免許・台数以上'},
@@ -357,23 +378,36 @@ function onHour(){
   if(G.phase!=='operating')return;
   const h=G.time.getHours(),dem=DEM[h];
   const wm=(d=>d===5||d===6?1.15:d===0?.9:1.0)(G.time.getDay());
-  const seasonMult=SEASONAL[G.time.getMonth()];
-  const washBonus= G.fac.built.wash?1.05:1.0;
-  const dispBonus= G.fac.built.dispatch?1.08:1.0;
-  const evBonus=   G.fac.built.ev_chr?0.90:1.0;
-  const trainBuilt=!!G.fac.built.training;
+  const sm=SEASONAL[G.time.getMonth()];
+  const wb=G.fac.built.wash?1.05:1.0,db=G.fac.built.dispatch?1.08:1.0,eb=G.fac.built.ev_chr?.90:1.0;
+  const train=!!G.fac.built.training;
   let rev=0,dPay=0,fuel=0;
   G.vehicles=G.vehicles.map(v=>{
     const dr=G.staff.find(p=>p.id===v.driverId);if(!dr)return v;
-    const m=VM[v.modelId],sm=skillMult(dr,trainBuilt),cm=0.6+(v.cond/100)*.4;
-    const hr=BASE_REV*dem*wm*seasonMult*m.rm*sm*cm*washBonus*dispBonus;
+    const m=VM[v.modelId],sk=skillMult(dr,train),cm=0.6+(v.cond/100)*.4;
+    const hr=BASE_REV*dem*wm*sm*m.rm*sk*cm*wb*db;
     rev+=hr;dPay+=hr*dr.cr;
     const km=8+dem*10;
-    fuel+=m.ev?km*m.kwhPkm*G.eco.elec*evBonus:(km/m.fuel)*G.eco.fuel;
+    fuel+=m.ev?km*m.kwhPkm*G.eco.elec*eb:(km/m.fuel)*G.eco.fuel;
     return{...v,mileage:v.mileage+km,cond:Math.max(0,v.cond-km*.002),totalRev:(v.totalRev||0)+hr};
   });
-  G.co.cash+=rev-dPay-fuel;
-  G.fin.cur.rev+=rev;G.fin.cur.dPay+=dPay;G.fin.cur.fuel+=fuel;
+
+  // ========== 決済手段別に分割 ==========
+  const cashRev=rev*PAY_MIX.cash;
+  const crRev=rev*PAY_MIX.credit;
+  const apRev=rev*PAY_MIX.app;
+
+  // 現金分のみ即時入金（クレカ・アプリは翌月）
+  G.co.cash+=cashRev-dPay-fuel;
+
+  // P/L計上（発生主義で全額）
+  G.fin.cur.rev+=rev;
+  G.fin.cur.cashRev+=cashRev;
+  G.fin.cur.creditRev+=crRev;
+  G.fin.cur.appRev+=apRev;
+  G.fin.cur.dPay+=dPay;
+  G.fin.cur.fuel+=fuel;
+
   if(G.time.getHours()===0){
     G.eco.fuel=Math.round(Math.max(140,Math.min(210,G.eco.fuel+(Math.random()-.5)*4))*10)/10;
     G.eco.elec=Math.round(Math.max(22,Math.min(38,G.eco.elec+(Math.random()-.5)*.8))*10)/10;
@@ -388,8 +422,8 @@ function onMonthEnd(){
   const fmo=G.fac.mo;
   const sal=G.staff.reduce((a,p)=>a+p.salary,0);
   const socialIns=Math.round(sal*SI_RATE);
-  const maintRate=G.fac.built.maintshop?0.0008:0.001;
-  const maint=Math.round(G.vehicles.reduce((a,v)=>a+(v.mileage/1000)*VM[v.modelId].price*maintRate,0));
+  const mRate=G.fac.built.maintshop?.0008:.001;
+  const maint=Math.round(G.vehicles.reduce((a,v)=>a+(v.mileage/1000)*VM[v.modelId].price*mRate,0));
   let depreciation=0;
   G.vehicles=G.vehicles.map(v=>{
     if(v.acquired!=='purchase')return v;
@@ -397,6 +431,22 @@ function onMonthEnd(){
     return{...v,bookValue:Math.max(0,(v.bookValue||0)-dep)};
   });
   depreciation=Math.round(depreciation);
+
+  // ========== 前月の未収金を今月入金 ==========
+  const prevArGross=G.ar.credit+G.ar.app;
+  // 手数料差し引き後の入金額
+  const prevArNet=Math.round(G.ar.credit*(1-PAY_FEE.credit)+G.ar.app*(1-PAY_FEE.app));
+  G.co.cash+=prevArNet;
+  G.cfAccum.arSettled+=prevArNet;
+
+  // ========== 当月発生の決済手数料（費用計上） ==========
+  const arFees=Math.round(b.creditRev*PAY_FEE.credit+b.appRev*PAY_FEE.app);
+  b.arFees=arFees;
+
+  // 翌月の未収金残高を更新
+  G.ar={credit:Math.round(b.creditRev),app:Math.round(b.appRev)};
+
+  // ローン返済
   let loanInterest=0,loanPrincipal=0;
   G.loans=G.loans.map(l=>{
     if(l.remaining<=0)return l;
@@ -405,30 +455,40 @@ function onMonthEnd(){
     G.co.cash-=Math.round(interest+principal);G.cfAccum.loanPrincipal+=Math.round(principal);
     return{...l,remaining:Math.max(0,l.remaining-principal)};
   }).filter(l=>l.remaining>0.01);
+
   G.co.cash-=vmo+fmo+sal+socialIns+maint;
   b.vmo=vmo;b.fmo=fmo;b.sal=sal;b.socialIns=socialIns;b.maint=maint;b.depreciation=depreciation;b.loanInterest=loanInterest;
-  b.profit=Math.round(b.rev-b.dPay-b.fuel-vmo-fmo-sal-socialIns-maint-depreciation-loanInterest);
-  G.cfAccum.opIn+=b.rev;G.cfAccum.opOut+=b.dPay+b.fuel+vmo+fmo+sal+socialIns+maint+loanInterest;
+
+  // P/L: 売上（発生主義）- 費用（手数料含む）
+  b.profit=Math.round(b.rev-b.dPay-b.fuel-vmo-fmo-sal-socialIns-maint-depreciation-loanInterest-arFees);
+
+  // CF累計（現金ベース）
+  G.cfAccum.opCashIn+=Math.round(b.cashRev)+prevArNet; // 当月現金収入 + 前月AR回収
+  G.cfAccum.opCashOut+=b.dPay+b.fuel+vmo+fmo+sal+socialIns+maint+loanInterest;
+
   G.fin.hist.push(b);G.fin.cur=newBucket(G.time);
   G.taxes.ctAccrued+=Math.round(b.rev*.036);
   G.taxes.corpFYProfit+=b.profit;
+
   const nm=G.time.getMonth();
   if([3,6,9,0].includes(nm)&&G.taxes.ctAccrued>0){
     const ct=Math.round(G.taxes.ctAccrued);G.co.cash-=ct;G.taxes.ctPaid+=ct;G.taxes.ctAccrued=0;
-    G.cfAccum.opOut+=ct;G.taxes.history.push({type:'消費税',amount:ct,date:new Date(G.time)});addN('warn',`消費税 納付: ${yen(ct)}`);
+    G.cfAccum.opCashOut+=ct;G.taxes.history.push({type:'消費税',amount:ct,date:new Date(G.time)});addN('warn',`消費税 納付: ${yen(ct)}`);
   }
   if(nm===3&&G.phase==='operating'){
     const ct=calcCorpTax(G.taxes.corpFYProfit);G.co.cash-=ct;G.taxes.corpPaid+=ct;
-    G.cfAccum.opOut+=ct;G.taxes.history.push({type:'法人税等',amount:ct,date:new Date(G.time)});
+    G.cfAccum.opCashOut+=ct;G.taxes.history.push({type:'法人税等',amount:ct,date:new Date(G.time)});
     addN('warn',`法人税等 申告: ${yen(ct)}`);G.taxes.corpFYProfit=0;
   }
+
   // 季節変動通知
   const nextMo=G.time.getMonth();
-  const sm=SEASONAL[nextMo];
-  const prevSm=SEASONAL[(nextMo+11)%12];
-  const diff=((sm-prevSm)/prevSm*100).toFixed(0);
-  const arrow=sm>prevSm?'📈':'📉';
-  addN(sm>=1.0?'info':'warn',`${arrow} 季節変動：${SEASON_LBL[nextMo]}（需要係数×${sm.toFixed(2)}、前月比${diff>0?'+':''}${diff}%）`);
+  const diff=((SEASONAL[nextMo]-SEASONAL[(nextMo+11)%12])/SEASONAL[(nextMo+11)%12]*100).toFixed(0);
+  addN(SEASONAL[nextMo]>=1.0?'info':'warn',`${SEASONAL[nextMo]>=1.0?'📈':'📉'} ${SEASON_LBL[nextMo]}（×${SEASONAL[nextMo].toFixed(2)}、前月比${diff>0?'+':''}${diff}%）`);
+
+  // AR入金通知
+  if(prevArGross>0)addN('info',`💳 未収金入金: クレカ${yen(Math.round(G.ar.credit/(1/(1-PAY_FEE.credit))))}・アプリ${yen(Math.round(prevArNet))} (手数料控除後)`);
+
   updateCompetitors();
   G.candidates=genCandidates(10);
   G.staff=G.staff.map(p=>({...p,stats:{...p.stats,motivation:clamp(p.stats.motivation+(p.vehicleId?(Math.random()*4-1):-3),10,100)}}));
@@ -439,8 +499,7 @@ function onMonthEnd(){
 function updateCompetitors(){
   const myVc=G.vehicles.filter(v=>v.driverId).length;
   G.competitors=G.competitors.map(c=>{
-    const grow=Math.random()<c.aggression*.3;
-    const shrink=Math.random()<.08;
+    const grow=Math.random()<c.aggression*.3,shrink=Math.random()<.08;
     const vChange=grow?rnd(0,3):shrink?-rnd(0,1):0;
     const newV=Math.max(1,c.vehicles+vChange);
     const total=myVc+G.competitors.reduce((a,x)=>a+x.vehicles,0);
@@ -462,20 +521,15 @@ function buyFac(fid){
   if(fid==='rest')G.fac.hasRest=true;
   addN('info',`${f.name} を確保 (${yen(f.price)})`);render();
 }
-
 function expandGarage(){
-  const n=G.fac.extraGarages||0;
-  const addCap=50;
-  const cost=Math.round(30000000*Math.pow(1.3,n));
-  const mo=Math.round(800000*Math.pow(1.2,n));
+  const n=G.fac.extraGarages||0;const addCap=50;
+  const cost=Math.round(30000000*Math.pow(1.3,n));const mo=Math.round(800000*Math.pow(1.2,n));
   if(G.co.cash<cost){addN('warn','資金が不足しています');return;}
   askConfirm(`第${n+2}車庫増設（+${addCap}台）\n初期費用 ${yen(cost)}、月額 ${yen(mo)} で増設しますか？`,()=>{
     G.co.cash-=cost;G.fac.garageCapacity+=addCap;G.fac.mo+=mo;
     G.fac.extraGarages=(G.fac.extraGarages||0)+1;G.cfAccum.facPurchase+=cost;
-    addN('info',`第${n+2}車庫増設完了 +${addCap}台 (計${G.fac.garageCapacity}台)`);
-  });
+    addN('info',`第${n+2}車庫増設 +${addCap}台（計${G.fac.garageCapacity}台）`);});
 }
-
 function acquireVehicle(mid,acq){
   const m=VM[mid];const upfront=acq==='purchase'?m.price:0;const mo=acq==='purchase'?m.buyMo:m.leaseMo;
   if(G.co.cash<upfront){addN('warn','資金が不足しています');return;}
@@ -485,7 +539,6 @@ function acquireVehicle(mid,acq){
   G.vehicles.push({id:uid(),modelId:mid,acquired:acq,mo,mileage:0,cond:100,driverId:null,totalRev:0,purchasePrice:acq==='purchase'?m.price:0,bookValue:acq==='purchase'?m.price:0});
   addN('info',`${m.name} ${acq==='lease'?`リース 月額${yen(mo)}`:`購入 ${yen(upfront)}`}`);render();
 }
-
 function sellVehicle(vid){
   const v=G.vehicles.find(x=>x.id===vid);if(!v)return;
   const m=VM[v.modelId],isL=v.acquired==='lease',val=isL?0:Math.round(m.price*.5*(v.cond/100));
@@ -494,33 +547,32 @@ function sellVehicle(vid){
     G.vehicles=G.vehicles.filter(x=>x.id!==vid);G.co.cash+=val;if(!isL)G.cfAccum.vSale+=val;
     addN('info',`${m.name} ${isL?'リース解約':'売却'}${val>0?` (${yen(val)})`:''}`)});
 }
-
 function hireStaff(cid){
   const c=G.candidates.find(x=>x.id===cid);if(!c)return;
   G.staff.push({...c,roles:['driver'],vehicleId:null,hireDate:new Date(G.time)});
   G.candidates=G.candidates.filter(x=>x.id!==cid);addN('info',`${c.name} を採用`);render();
 }
-
 function fireStaff(sid){
   const p=G.staff.find(x=>x.id===sid);if(!p)return;
   askConfirm(`${p.name} を解雇しますか？`,()=>{
     if(p.vehicleId)G.vehicles=G.vehicles.map(v=>v.id===p.vehicleId?{...v,driverId:null}:v);
     G.staff=G.staff.filter(x=>x.id!==sid);addN('info',`${p.name} を解雇`);});
 }
-
 function toggleRole(sid,role){G.staff=G.staff.map(p=>{if(p.id!==sid)return p;const roles=p.roles.includes(role)?p.roles.filter(r=>r!==role):[...p.roles,role];return{...p,roles};});render();}
 function assignVehicle(sid,vid){
   G.staff=G.staff.map(p=>{if(p.vehicleId===vid&&p.id!==sid)return{...p,vehicleId:null};if(p.id===sid)return{...p,vehicleId:vid||null};return p;});
   G.vehicles=G.vehicles.map(v=>{if(v.driverId===sid)return{...v,driverId:null};if(v.id===vid)return{...v,driverId:sid};return v;});render();
 }
-
 function applyPermit(){
   if(!comply(G).all){addN('warn','全要件を満たしてから申請してください');return;}
+  const nameEl=document.getElementById('coNameInput');
+  const name=(nameEl?.value||'').trim();
+  if(!name){addN('warn','申請社名を入力してください');return;}
+  G.co.name=name;
   G.phase='applied';G.permitApplied=new Date(G.time);
   const ap=new Date(G.time);ap.setMonth(ap.getMonth()+2);G.permitReady=ap;
-  addN('info',`許可申請を提出（中国運輸局 広島運輸支局）。許可予定: ${ap.getFullYear()}/${ap.getMonth()+1}月`);render();
+  addN('info',`「${name}」として許可申請を提出（中国運輸局 広島運輸支局）。許可予定: ${ap.getFullYear()}/${ap.getMonth()+1}月`);render();
 }
-
 function takeLoan(idx){
   const p=LOAN_PRESETS[idx];if(!p)return;
   const mo=loanMonthly(p.amount,p.term);
@@ -528,11 +580,9 @@ function takeLoan(idx){
     G.loans.push({id:uid(),label:p.label,amount:p.amount,remaining:p.amount,monthly:mo,term:p.term,startDate:new Date(G.time)});
     G.co.cash+=p.amount;G.cfAccum.loanIn+=p.amount;addN('info',`銀行融資 ${yen(p.amount)} 実行（月返済${yen(mo)}）`);});
 }
-
 function repayExtra(lid){
   const loan=G.loans.find(l=>l.id===lid);if(!loan)return;
-  const el=document.getElementById('repay-'+lid);
-  const amt=parseInt(el?.value||'0')*10000;
+  const el=document.getElementById('repay-'+lid);const amt=parseInt(el?.value||'0')*10000;
   if(!amt||amt<=0){addN('warn','返済額を入力してください（万円）');return;}
   if(amt>G.co.cash){addN('warn','現金が不足しています');return;}
   if(amt>loan.remaining){addN('warn','返済額が残高を超えています');return;}
@@ -540,7 +590,6 @@ function repayExtra(lid){
   if(loan.remaining<1000){G.loans=G.loans.filter(l=>l.id!==lid);addN('info','ローンを完済しました');}
   else addN('info',`繰上返済 ${yen(amt)} (残高${yen(loan.remaining)})`);render();
 }
-
 function resetGame(){askConfirm('ゲームをリセットしますか？（全データが消えます）',()=>{stopTick();G=initState();});}
 function addN(type,msg){G.notifs.unshift({id:G.nid++,type,msg,time:new Date(G.time)});if(G.notifs.length>80)G.notifs.pop();}
 function toggleNotif(){G.showNotif=!G.showNotif;render();}
@@ -566,21 +615,17 @@ function render(){
   const phases={setup:['開業準備中','pb-setup'],applied:['許可申請中','pb-applied'],operating:['営業中','pb-operating'],gameover:['ゲームオーバー','pb-gameover']};
   const[pl,pc]=phases[G.phase]||['不明','pb-setup'];
   document.getElementById('phasedsp').innerHTML=`<span class="pbadge ${pc}">${pl}</span>`;
-  // 季節表示
-  const mo=G.time.getMonth();
-  const sm=SEASONAL[mo];
+  const mo=G.time.getMonth(),sm=SEASONAL[mo];
   const scarr=sm>=1.1?'🔥':sm>=1.0?'📈':sm>=0.9?'😐':'❄️';
-  document.getElementById('seasondsp').innerHTML=`<span class="season-badge">${scarr} ${SEASON_LBL[mo]} ×${sm.toFixed(2)}</span>`;
+  document.getElementById('seasondsp').innerHTML=`<span class="season-badge">${scarr} ${SEASON_LBL[mo].slice(0,8)} ×${sm.toFixed(2)}</span>`;
   const cur=G.fin.cur,net=cur.rev-cur.dPay-cur.fuel;
-  document.getElementById('sright').textContent=`粗利${yen(net)} ⛽¥${G.eco.fuel.toFixed(1)} ⚡¥${G.eco.elec.toFixed(1)}`;
+  document.getElementById('sright').textContent=`粗利${yen(net)} AR${yen(G.ar.credit+G.ar.app)} ⛽¥${G.eco.fuel.toFixed(1)}`;
   const np=document.getElementById('np');np.style.display=G.showNotif?'flex':'none';
   document.getElementById('nlist').innerHTML=G.notifs.length===0?'<div style="text-align:center;padding:20px;color:var(--sub);font-size:12px">通知なし</div>':G.notifs.map(n=>`<div class="ni"><div class="nd nd-${n.type}"></div><div><div class="nt">${n.msg}</div><div class="ntm">${fmt(n.time)}</div></div></div>`).join('');
   const views={compliance:vCompliance,staff:vStaff,vehicles:vVehicles,facility:vFacility,finance:vFinance,market:vMarket};
   document.getElementById('main').innerHTML=(views[G.tab]||vCompliance)();
-  // confirm overlay
   let co=document.getElementById('confirmOverlay');
   if(G._confirm){if(!co){co=document.createElement('div');co.id='confirmOverlay';co.className='overlay';document.getElementById('app').appendChild(co);}co.innerHTML=`<div class="md"><div class="md-title">確認</div><div style="font-size:13px;color:var(--sub);margin-bottom:16px;white-space:pre-line">${G._confirm.msg}</div><div style="display:flex;gap:8px"><button class="btn btn-d" style="flex:1" onclick="confirmYes()">はい</button><button class="btn btn-s" style="flex:1" onclick="confirmNo()">キャンセル</button></div></div>`;}else if(co)co.remove();
-  // gameover overlay
   let go=document.getElementById('gomModal');
   if(G.phase==='gameover'&&!go){go=document.createElement('div');go.id='gomModal';go.className='overlay';go.innerHTML=`<div class="md"><div class="md-title">破産 💸</div><div style="font-size:13px;color:var(--sub);margin-bottom:16px">資金がマイナス1億円を超えました。<br>累計売上: ${yen(G.fin.hist.reduce((a,b)=>a+b.rev,0)+G.fin.cur.rev)}</div><button class="btn btn-p btn-bl" onclick="resetGame()">もう一度挑戦する</button></div>`;document.getElementById('app').appendChild(go);}
   else if(G.phase!=='gameover'&&go)go.remove();
@@ -604,7 +649,15 @@ function vCompliance(){
   if(G.phase==='setup')banner=c.all?`<div class="ib ib-ok">✅ 全要件クリア！許可申請できます。</div>`:`<div class="ib ib-warn">⚠️ 未充足 ${items.filter(i=>!i.ok).length}件。全て満たしてから申請してください。</div>`;
   else if(G.phase==='applied')banner=`<div class="ib ib-info">📋 申請中（中国運輸局 広島運輸支局）。▶ で時間を進めてください。</div>`;
   else banner=c.all?`<div class="ib ib-ok">✅ コンプライアンス良好</div>`:`<div class="ib ib-err">🚨 違反あり！抜き打ち監査で罰則が課されます。</div>`;
-  const permitBtn=G.phase==='setup'?`<button class="apply-btn" ${c.all?'':'disabled'} onclick="applyPermit()">📋 ${c.all?'許可申請を提出する（中国運輸局 広島運輸支局）':'全要件を満たしてから申請できます'}</button>`:'';
+  const nameField=G.phase==='setup'?`
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">📝 申請社名</div>
+      <input type="text" id="coNameInput" value="${G.co.name}"
+        placeholder="例：新星タクシー株式会社"
+        style="font-size:13px;margin-bottom:5px;padding:7px 10px;width:100%">
+      <div style="font-size:10px;color:var(--sub)">許可申請書に記載される法人名を入力してください（株式会社・合同会社など形態を含む）</div>
+    </div>`:'';
+  const permitBtn=G.phase==='setup'?nameField+`<button class="apply-btn" ${c.all?'':'disabled'} onclick="applyPermit()">📋 ${c.all?'許可申請を提出する（中国運輸局 広島運輸支局）':'全要件を満たしてから申請できます'}</button>`:'';
   return`<div class="card">${banner}<div class="ct">法令コンプライアンスチェック</div>${items.map(i=>`<div class="ci"><div class="ci-ic">${i.icon}</div><div class="ci-body"><div class="ci-t">${i.title}</div><div class="ci-d">${i.detail}</div><div class="ci-law">📖 ${i.law}</div></div></div>`).join('')}${permitBtn}</div><div style="text-align:right"><button class="btn btn-s btn-sm" onclick="resetGame()">↺ リセット</button></div>`;
 }
 
@@ -636,70 +689,106 @@ function vVehicles(){
 function vFacility(){
   const built=G.fac.built;
   const eff=[];
-  if(built.wash)eff.push('洗車設備: 売上+5%');
-  if(built.dispatch)eff.push('配車センター: 売上+8%');
-  if(built.ev_chr)eff.push('EV充電: 電費-10%');
-  if(built.maintshop)eff.push('整備工場: メンテ費-20%');
-  if(built.training)eff.push('研修センター: 運転手能力+5%');
-  const effStr=eff.length?`<div class="ib ib-ok" style="margin-top:6px">✓ 有効な設備効果：${eff.join('　')}</div>`:'';
-  const summary=`<div class="card"><div class="ct">施設状況</div>
-    <div style="font-size:12px;display:grid;gap:3px">
-      <div>営業所: ${Object.keys(built).some(k=>k.startsWith('office'))?'<span style="color:var(--green)">✓ 確保済</span>':'<span style="color:var(--red)">✗ 未確保</span>'}</div>
-      <div>車庫容量: <strong>${G.fac.garageCapacity}台</strong>${G.fac.extraGarages?` (追加増設×${G.fac.extraGarages})`:''}</div>
-      <div>休憩施設: ${built.rest?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>'}</div>
-      <div style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px">月額合計: <strong>${yen(G.fac.mo)}</strong></div>
-    </div>${effStr}</div>`;
-  const groups=FAC_GROUPS.map(g=>{
-    const items=g.items.map(fid=>{
-      const f=FAC_CATALOG[fid];const done=!!built[fid];const locked=f.req&&!built[f.req];
-      return`<div class="fac-item ${done?'done':locked?'locked':''}">
-        <div style="font-weight:600;font-size:12px">${done?'✅ ':locked?'🔒 ':''}${f.name}</div>
-        <div style="font-size:10px;color:var(--sub);margin:2px 0">${f.desc}</div>
-        <div style="font-size:11px">${f.cap>0?`+${f.cap}台 ・ `:''}初期${yen(f.price)} 月額${f.mo?yen(f.mo):'なし'}</div>
-        ${locked?`<div style="font-size:10px;color:var(--amber);margin-top:3px">先に「${FAC_CATALOG[f.req].name}」が必要</div>`:done?'':`<button class="btn btn-p btn-sm" style="margin-top:5px;width:100%" onclick="buyFac('${fid}')" ${G.co.cash<f.price?'disabled':''}>取得${G.co.cash<f.price?' (資金不足)':''}</button>`}
-      </div>`;}).join('');
-    return`<div class="card"><div class="ct">${g.label}</div><div class="fac-grid">${items}</div></div>`;
-  }).join('');
-  // 青天井 追加車庫ボタン (garage6建設済みの場合)
-  let expandBtn='';
-  if(built.garage6){
-    const n=G.fac.extraGarages||0;
-    const cost=Math.round(30000000*Math.pow(1.3,n));
-    const addMo=Math.round(800000*Math.pow(1.2,n));
-    expandBtn=`<div class="card" style="border:2px dashed var(--accent)"><div class="ct">🔓 追加車庫増設（青天井拡張）</div>
-      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">車庫6完成後は何度でも増設可能。コストは増設ごとに30%上昇。</div>
-      <div style="font-size:12px">第${n+2}車庫 +50台 ／ 初期費用 <strong>${yen(cost)}</strong> ・ 月額 ${yen(addMo)}</div>
-      <button class="btn btn-p btn-sm btn-bl" onclick="expandGarage()" ${G.co.cash<cost?'disabled':''}>追加増設する</button>
-      <div style="font-size:11px;color:var(--sub);margin-top:5px">現在の収容台数: ${G.fac.garageCapacity}台（増設${n}回）</div>
-    </div>`;
-  }
+  if(built.wash)eff.push('洗車: 売上+5%');if(built.dispatch)eff.push('配車センター: 売上+8%');
+  if(built.ev_chr)eff.push('EV充電: 電費-10%');if(built.maintshop)eff.push('整備工場: メンテ費-20%');if(built.training)eff.push('研修: 能力+5%');
+  const summary=`<div class="card"><div class="ct">施設状況</div><div style="font-size:12px;display:grid;gap:3px"><div>営業所: ${Object.keys(built).some(k=>k.startsWith('office'))?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>'}</div><div>車庫容量: <strong>${G.fac.garageCapacity}台</strong>${G.fac.extraGarages?` (追加×${G.fac.extraGarages})`:''}</div><div>休憩施設: ${built.rest?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>'}</div><div style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px">月額合計: <strong>${yen(G.fac.mo)}</strong></div></div>${eff.length?`<div class="ib ib-ok" style="margin-top:6px">✓ ${eff.join('　')}</div>`:''}</div>`;
+  const groups=FAC_GROUPS.map(g=>{const items=g.items.map(fid=>{const f=FAC_CATALOG[fid];const done=!!built[fid];const locked=f.req&&!built[f.req];return`<div class="fac-item ${done?'done':locked?'locked':''}"><div style="font-weight:600;font-size:12px">${done?'✅ ':locked?'🔒 ':''}${f.name}</div><div style="font-size:10px;color:var(--sub);margin:2px 0">${f.desc}</div><div style="font-size:11px">${f.cap>0?`+${f.cap}台 ・ `:''}初期${yen(f.price)} 月${f.mo?yen(f.mo):'なし'}</div>${locked?`<div style="font-size:10px;color:var(--amber);margin-top:3px">→先に「${FAC_CATALOG[f.req].name}」</div>`:done?'':`<button class="btn btn-p btn-sm" style="margin-top:5px;width:100%" onclick="buyFac('${fid}')" ${G.co.cash<f.price?'disabled':''}>取得</button>`}</div>`;}).join('');return`<div class="card"><div class="ct">${g.label}</div><div class="fac-grid">${items}</div></div>`;}).join('');
+  const expandBtn=built.garage6?`<div class="card" style="border:2px dashed var(--accent)"><div class="ct">🔓 追加車庫増設（青天井）</div><div style="font-size:12px;color:var(--sub);margin-bottom:8px">garage6完成後は何度でも増設可能（+50台ずつ、コストは増設ごとに30%上昇）</div><div style="font-size:12px">第${(G.fac.extraGarages||0)+2}車庫 +50台 ／ 初期費用 <strong>${yen(Math.round(30000000*Math.pow(1.3,G.fac.extraGarages||0)))}</strong></div><button class="btn btn-p btn-sm btn-bl" onclick="expandGarage()" ${G.co.cash<Math.round(30000000*Math.pow(1.3,G.fac.extraGarages||0))?'disabled':''}>追加増設する</button><div style="font-size:11px;color:var(--sub);margin-top:5px">現在 ${G.fac.garageCapacity}台</div></div>`:'';
   return summary+groups+expandBtn;
 }
 
 function vFinance(){
-  const tabs=`<div class="stabs"><button class="stab ${G.finTab==='pl'?'on':''}" onclick="setFinTab('pl')">P/L</button><button class="stab ${G.finTab==='bs'?'on':''}" onclick="setFinTab('bs')">B/S</button><button class="stab ${G.finTab==='cf'?'on':''}" onclick="setFinTab('cf')">C/F</button><button class="stab ${G.finTab==='loan'?'on':''}" onclick="setFinTab('loan')">借入</button><button class="stab ${G.finTab==='tax'?'on':''}" onclick="setFinTab('tax')">税金・社保</button></div>`;
+  const tabs=`<div class="stabs"><button class="stab ${G.finTab==='pl'?'on':''}" onclick="setFinTab('pl')">P/L</button><button class="stab ${G.finTab==='ar'?'on':''}" onclick="setFinTab('ar')">未収金</button><button class="stab ${G.finTab==='bs'?'on':''}" onclick="setFinTab('bs')">B/S</button><button class="stab ${G.finTab==='cf'?'on':''}" onclick="setFinTab('cf')">C/F</button><button class="stab ${G.finTab==='loan'?'on':''}" onclick="setFinTab('loan')">借入</button><button class="stab ${G.finTab==='tax'?'on':''}" onclick="setFinTab('tax')">税金</button></div>`;
   const h=G.fin.hist,m=G.fin.cur;
   const totRev=h.reduce((a,b)=>a+b.rev,0)+m.rev,totPro=h.reduce((a,b)=>a+(b.profit||0),0);
   const totalDebt=G.loans.reduce((a,l)=>a+l.remaining,0);
-  const ov=`<div class="sg"><div class="sb"><div class="sl">現金</div><div class="sv ${G.co.cash<0?'neg':''}">${yen(G.co.cash)}</div></div><div class="sb"><div class="sl">借入残高</div><div class="sv ${totalDebt>0?'neg':''}">${yen(totalDebt)}</div></div><div class="sb"><div class="sl">累計利益</div><div class="sv ${totPro>=0?'pos':'neg'}">${yen(totPro)}</div></div><div class="sb"><div class="sl">累計売上</div><div class="sv">${yen(totRev)}</div></div></div>`;
+  const arTotal=G.ar.credit+G.ar.app;
+  const ov=`<div class="sg"><div class="sb"><div class="sl">現金</div><div class="sv ${G.co.cash<0?'neg':''}">${yen(G.co.cash)}</div></div><div class="sb"><div class="sl">未収金（翌月入金）</div><div class="sv" style="color:var(--amber)">${yen(arTotal)}</div></div><div class="sb"><div class="sl">累計利益</div><div class="sv ${totPro>=0?'pos':'neg'}">${yen(totPro)}</div></div><div class="sb"><div class="sl">借入残高</div><div class="sv ${totalDebt>0?'neg':''}">${yen(totalDebt)}</div></div></div>`;
 
+  // --------- P/L ---------
   if(G.finTab==='pl'){
     const net=m.rev-m.dPay-m.fuel;
-    const cur=`<div class="card"><div class="ct">今月の暫定P/L (${m.month})</div><div class="fr"><span>売上</span><span>${yen(m.rev)}</span></div><div class="fr fi"><span>- 運転手歩合</span><span>${yen(m.dPay)}</span></div><div class="fr fi"><span>- 燃料・電気費</span><span>${yen(m.fuel)}</span></div><div class="fd"></div><div class="fr"><strong>粗利（暫定）</strong><strong style="color:${net>=0?'var(--green)':'var(--red)'}">${yen(net)}</strong></div></div>`;
-    const hist=h.length===0?'<div class="card" style="text-align:center;color:var(--sub);padding:14px;font-size:12px">まだ月次決算なし</div>':[...h].reverse().map(b=>`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><strong style="font-size:12px">${b.month}</strong><strong style="color:${b.profit>=0?'var(--green)':'var(--red)'}">${yen(b.profit)} (${b.rev>0?(b.profit/b.rev*100).toFixed(1):'0'}%)</strong></div><div class="fr"><span>売上</span><span>${yen(b.rev)}</span></div><div class="fr fi"><span>- 歩合</span><span>${yen(b.dPay)}</span></div><div class="fr fi"><span>- 燃料・電気</span><span>${yen(b.fuel)}</span></div><div class="fr fi"><span>- 車両月額</span><span>${yen(b.vmo)}</span></div><div class="fr fi"><span>- 施設費</span><span>${yen(b.fmo)}</span></div><div class="fr fi"><span>- 給与</span><span>${yen(b.sal)}</span></div><div class="fr fi"><span>- 社会保険(事業主)</span><span>${yen(b.socialIns)}</span></div><div class="fr fi"><span>- メンテ費</span><span>${yen(b.maint)}</span></div><div class="fr fi"><span>- 減価償却</span><span>${yen(b.depreciation)}</span></div><div class="fr fi"><span>- 支払利息</span><span>${yen(b.loanInterest)}</span></div><div class="fd"></div><div class="fr"><strong>当期利益</strong><strong style="color:${b.profit>=0?'var(--green)':'var(--red)'}">${yen(b.profit)}</strong></div></div>`).join('');
+    // 決済手段バッジ
+    const payBar=(b)=>{
+      if(!b.creditRev&&!b.appRev)return '';
+      const cr=Math.round(b.creditRev/(b.rev||1)*100),ap=Math.round(b.appRev/(b.rev||1)*100),ca=100-cr-ap;
+      return`<div style="display:flex;gap:4px;align-items:center;font-size:10px;margin-bottom:5px">
+        <span class="pay-badge pay-cash">現金 ${ca}%</span>
+        <span class="pay-badge pay-credit">クレカ ${cr}% → ${yen(Math.round(b.creditRev*(1-PAY_FEE.credit)))} 入金</span>
+        <span class="pay-badge pay-app">アプリ ${ap}% → ${yen(Math.round(b.appRev*(1-PAY_FEE.app)))} 入金</span>
+      </div>`;
+    };
+    const cur=`<div class="card"><div class="ct">今月の暫定P/L (${m.month})</div>
+      ${payBar(m)}
+      <div class="fr"><span>売上（発生主義）</span><span>${yen(m.rev)}</span></div>
+      <div class="fr fi"><span style="color:var(--green)">うち現金即時</span><span>${yen(m.cashRev)}</span></div>
+      <div class="fr fi"><span style="color:#1565c0">うちクレカ未収</span><span>${yen(m.creditRev)}</span></div>
+      <div class="fr fi"><span style="color:#ad1457">うちアプリ未収</span><span>${yen(m.appRev)}</span></div>
+      <div class="fr fi"><span>- 運転手歩合</span><span>${yen(m.dPay)}</span></div>
+      <div class="fr fi"><span>- 燃料・電気費</span><span>${yen(m.fuel)}</span></div>
+      <div class="fd"></div><div class="fr"><strong>粗利（暫定）</strong><strong style="color:${net>=0?'var(--green)':'var(--red)'}">${yen(net)}</strong></div>
+      <div class="ib ib-info" style="margin-top:6px">月次決算時に 車両月額・施設費・給与・社保・メンテ・減価償却・支払利息・<strong>決済手数料</strong> が加算されます</div></div>`;
+    const hist=h.length===0?'<div class="card" style="text-align:center;color:var(--sub);padding:14px;font-size:12px">まだ月次決算なし</div>':[...h].reverse().map(b=>`<div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><strong style="font-size:12px">${b.month}</strong><strong style="color:${b.profit>=0?'var(--green)':'var(--red)'}">${yen(b.profit)} (${b.rev>0?(b.profit/b.rev*100).toFixed(1):'0'}%)</strong></div>
+      ${payBar(b)}
+      <div class="fr"><span>売上（発生主義）</span><span>${yen(b.rev)}</span></div>
+      <div class="fr fi"><span>- 運転手歩合</span><span>${yen(b.dPay)}</span></div>
+      <div class="fr fi"><span>- 燃料・電気</span><span>${yen(b.fuel)}</span></div>
+      <div class="fr fi"><span>- 車両月額</span><span>${yen(b.vmo)}</span></div>
+      <div class="fr fi"><span>- 施設費</span><span>${yen(b.fmo)}</span></div>
+      <div class="fr fi"><span>- 給与</span><span>${yen(b.sal)}</span></div>
+      <div class="fr fi"><span>- 社会保険(事業主)</span><span>${yen(b.socialIns)}</span></div>
+      <div class="fr fi"><span>- メンテ費</span><span>${yen(b.maint)}</span></div>
+      <div class="fr fi"><span>- 減価償却</span><span>${yen(b.depreciation)}</span></div>
+      <div class="fr fi"><span>- 支払利息</span><span>${yen(b.loanInterest)}</span></div>
+      <div class="fr fi"><span>- 決済手数料 <span class="pay-badge pay-credit">クレカ${(PAY_FEE.credit*100).toFixed(1)}%</span><span class="pay-badge pay-app">アプリ${(PAY_FEE.app*100).toFixed(0)}%</span></span><span style="color:var(--red)">${yen(b.arFees||0)}</span></div>
+      <div class="fd"></div><div class="fr"><strong>当期利益</strong><strong style="color:${b.profit>=0?'var(--green)':'var(--red)'}">${yen(b.profit)}</strong></div></div>`).join('');
     return tabs+ov+cur+hist;
   }
 
+  // --------- 未収金 AR ---------
+  if(G.finTab==='ar'){
+    const arCreditNet=Math.round(G.ar.credit*(1-PAY_FEE.credit));
+    const arAppNet=Math.round(G.ar.app*(1-PAY_FEE.app));
+    const totalFees=G.ar.credit-arCreditNet+G.ar.app-arAppNet;
+    const totArSettled=G.cfAccum.arSettled;
+    const totArFees=h.reduce((a,b)=>a+(b.arFees||0),0);
+    return tabs+`
+    <div class="card"><div class="ct">💳 未収金（売掛金）概要</div>
+      <div class="ib ib-info" style="margin-bottom:8px">
+        <strong>決済手段構成比</strong><br>
+        <span class="pay-badge pay-cash">現金 ${(PAY_MIX.cash*100).toFixed(0)}%</span> 即時入金<br>
+        <span class="pay-badge pay-credit">クレジットカード ${(PAY_MIX.credit*100).toFixed(0)}%</span> 翌月加盟店精算・手数料 ${(PAY_FEE.credit*100).toFixed(1)}%<br>
+        <span class="pay-badge pay-app">アプリ配車（GO等） ${(PAY_MIX.app*100).toFixed(0)}%</span> 翌月プラットフォーム精算・手数料 ${(PAY_FEE.app*100).toFixed(0)}%
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px">前月分の未収金（今月入金予定）</div>
+      <div class="fr"><span><span class="pay-badge pay-credit">クレカ</span> 売上額</span><span>${yen(G.ar.credit)}</span></div>
+      <div class="fr fi"><span>- 手数料 ${(PAY_FEE.credit*100).toFixed(1)}%</span><span style="color:var(--red)">-${yen(G.ar.credit-arCreditNet)}</span></div>
+      <div class="fr fi"><span>手取り入金額</span><span style="color:var(--green)">${yen(arCreditNet)}</span></div>
+      <div class="fr" style="margin-top:6px"><span><span class="pay-badge pay-app">アプリ</span> 売上額</span><span>${yen(G.ar.app)}</span></div>
+      <div class="fr fi"><span>- 手数料 ${(PAY_FEE.app*100).toFixed(0)}%</span><span style="color:var(--red)">-${yen(G.ar.app-arAppNet)}</span></div>
+      <div class="fr fi"><span>手取り入金額</span><span style="color:var(--green)">${yen(arAppNet)}</span></div>
+      <div class="fd"></div>
+      <div class="fr"><strong>今月末入金見込（手数料控除後）</strong><strong style="color:var(--green)">${yen(arCreditNet+arAppNet)}</strong></div>
+      <div class="fr fi"><span>控除手数料合計</span><span style="color:var(--red)">-${yen(totalFees)}</span></div>
+    </div>
+    <div class="card"><div class="ct">累計AR実績</div>
+      <div class="fr"><span>累計AR回収額（手数料控除後）</span><span>${yen(totArSettled)}</span></div>
+      <div class="fr"><span>累計決済手数料（費用）</span><span style="color:var(--red)">-${yen(totArFees)}</span></div>
+      <div class="ib ib-warn" style="margin-top:6px">⚠️ アプリ配車の手数料${(PAY_FEE.app*100).toFixed(0)}%は高コスト。現金・クレカ比率の引き上げが利益改善に有効です。</div>
+    </div>`;
+  }
+
+  // --------- B/S ---------
   if(G.finTab==='bs'){
     const vehicleBV=G.vehicles.filter(v=>v.acquired==='purchase').reduce((s,v)=>s+(v.bookValue||0),0);
-    const totalA=G.co.cash+vehicleBV;
-    const ctLiab=G.taxes.ctAccrued;
-    const corpEst=Math.max(70000,G.taxes.corpFYProfit>0?calcCorpTax(G.taxes.corpFYProfit):70000);
-    const totalL=totalDebt+ctLiab+corpEst;
-    const equity=totalA-totalL;const retained=equity-G.capitalStock;
+    const totalA=G.co.cash+arTotal+vehicleBV;
+    const ctLiab=G.taxes.ctAccrued;const corpEst=Math.max(70000,G.taxes.corpFYProfit>0?calcCorpTax(G.taxes.corpFYProfit):70000);
+    const totalL=totalDebt+ctLiab+corpEst;const equity=totalA-totalL;const retained=equity-G.capitalStock;
     return tabs+`<div class="card"><div class="ct">貸借対照表 B/S（${fmt(G.time).slice(0,7)}）</div>
       <div class="bs-hdr">資産の部</div>
       <div class="bs-row bs-ind"><span>現金・預金</span><span>${yen(G.co.cash)}</span></div>
+      <div class="bs-row bs-ind"><span>未収金 <span class="pay-badge pay-credit">クレカ</span><span class="pay-badge pay-app">アプリ</span>（翌月入金）</span><span style="color:var(--amber)">${yen(arTotal)}</span></div>
       <div class="bs-row bs-ind"><span>車両（帳簿価額）</span><span>${yen(vehicleBV)}</span></div>
       <div class="bs-total"><span>資産合計</span><span>${yen(totalA)}</span></div>
       <div class="bs-hdr">負債の部</div>
@@ -712,20 +801,26 @@ function vFinance(){
       <div class="bs-row bs-ind"><span style="color:${retained>=0?'var(--green)':'var(--red)'}">繰越利益剰余金</span><span style="color:${retained>=0?'var(--green)':'var(--red)'}">${yen(retained)}</span></div>
       <div class="bs-total"><span>純資産合計</span><span style="color:${equity>=0?'var(--green)':'var(--red)'}">${yen(equity)}</span></div>
       <div class="bs-total" style="border-top:2px solid var(--text)"><span>負債・純資産合計</span><span>${yen(totalL+equity)}</span></div>
-      <div class="ib ib-info" style="margin-top:8px;font-size:11px">※施設は費用処理済として資産計上外。リース車両はオフバランス。</div></div>`;
+      <div class="ib ib-info" style="margin-top:8px;font-size:11px">未収金 = 翌月入金予定のクレカ・アプリ売上（手数料控除前）。施設は費用処理済。リースはオフバランス。</div></div>`;
   }
 
+  // --------- C/F ---------
   if(G.finTab==='cf'){
     const ca=G.cfAccum;
-    const totDep=G.fin.hist.reduce((a,b)=>a+(b.depreciation||0),0);
-    const opNet=ca.opIn-ca.opOut+totDep;
+    const totDep=h.reduce((a,b)=>a+(b.depreciation||0),0);
+    // 営業CF（現金主義ベース）
+    const opNet=ca.opCashIn-ca.opCashOut+totDep; // 減価償却は非現金なので加算
     const invNet=-(ca.vPurchase+ca.facPurchase)+ca.vSale;
     const finNet=ca.loanIn-ca.loanPrincipal;
-    return tabs+`<div class="card"><div class="ct">キャッシュフロー計算書 C/F（累計）</div>
+    // P/L売上（発生）と実際のCF収入の差
+    const accrualRev=h.reduce((a,b)=>a+b.rev,0);
+    const cashGap=ca.opCashIn-ca.arSettled-accrualRev; // 概算
+    return tabs+`<div class="card"><div class="ct">キャッシュフロー計算書 C/F（累計・現金主義ベース）</div>
       <div style="background:#f0f6ff;border-radius:6px;padding:7px;margin-bottom:6px">
         <div class="cf-row"><strong>Ⅰ 営業活動によるCF</strong></div>
-        <div class="cf-row cf-ind"><span>営業収入</span><span>${yen(ca.opIn)}</span></div>
-        <div class="cf-row cf-ind"><span>営業支出（人件費・燃料・税等）</span><span style="color:var(--red)">-${yen(ca.opOut)}</span></div>
+        <div class="cf-row cf-ind"><span>現金・即時決済収入</span><span>${yen(ca.opCashIn-ca.arSettled)}</span></div>
+        <div class="cf-row cf-ind"><span>未収金回収額（手数料控除後）</span><span>${yen(ca.arSettled)}</span></div>
+        <div class="cf-row cf-ind"><span>営業支出合計</span><span style="color:var(--red)">-${yen(ca.opCashOut)}</span></div>
         <div class="cf-row cf-ind"><span>減価償却費（非現金加算）</span><span>${yen(totDep)}</span></div>
         <div class="cf-sub"><span>営業CF計</span><span style="color:${opNet>=0?'var(--green)':'var(--red)'}">${yen(opNet)}</span></div>
       </div>
@@ -742,23 +837,22 @@ function vFinance(){
         <div class="cf-row cf-ind"><span>借入元金返済</span><span style="color:var(--red)">-${yen(ca.loanPrincipal)}</span></div>
         <div class="cf-sub"><span>財務CF計</span><span style="color:${finNet>=0?'var(--green)':'var(--red)'}">${yen(finNet)}</span></div>
       </div>
-      <div style="border-top:2px solid var(--border);padding-top:5px;display:flex;justify-content:space-between;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums">
-        <span>フリーCF（Ⅰ+Ⅱ）</span><span style="color:${(opNet+invNet)>=0?'var(--green)':'var(--red)'}">${yen(opNet+invNet)}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;margin-top:4px">
-        <span>期間純増減（Ⅰ+Ⅱ+Ⅲ）</span><span style="color:${(opNet+invNet+finNet)>=0?'var(--green)':'var(--red)'}">${yen(opNet+invNet+finNet)}</span>
-      </div></div>`;
+      <div style="border-top:2px solid var(--border);padding-top:5px;display:flex;justify-content:space-between;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums"><span>フリーCF（Ⅰ+Ⅱ）</span><span style="color:${(opNet+invNet)>=0?'var(--green)':'var(--red)'}">${yen(opNet+invNet)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;margin-top:4px"><span>期間純増減（Ⅰ+Ⅱ+Ⅲ）</span><span style="color:${(opNet+invNet+finNet)>=0?'var(--green)':'var(--red)'}">${yen(opNet+invNet+finNet)}</span></div>
+      <div class="ib ib-info" style="margin-top:8px">💡 未収金残高 ${yen(arTotal)} はB/S上の資産ですが、CFには翌月反映されます（クレカ・アプリの入金タイムラグ）</div>
+    </div>`;
   }
 
+  // --------- 借入 ---------
   if(G.finTab==='loan'){
     const loanList=G.loans.length===0?'<div style="text-align:center;padding:10px;color:var(--sub);font-size:12px">借入なし</div>':G.loans.map(l=>`<div class="loan-row"><div style="font-weight:600">${l.label}</div><div class="loan-meta"><span>残高 ${yen(l.remaining)}</span><span>月返済 ${yen(l.monthly)}</span><span>残約${Math.max(0,Math.ceil(l.remaining/l.monthly))}ヶ月</span></div><div style="display:flex;gap:5px;margin-top:6px;align-items:center"><input type="number" id="repay-${l.id}" placeholder="繰上返済額(万円)" style="padding:4px 6px;font-size:11px"><button class="btn btn-s btn-sm" onclick="repayExtra('${l.id}')">繰上返済</button></div></div>`).join('');
     const opts=LOAN_PRESETS.map((p,i)=>`<option value="${i}">${p.label} → 月${yen(loanMonthly(p.amount,p.term))}</option>`).join('');
     return tabs+ov+`<div class="card"><div class="ct">借入管理 <span style="font-size:10px;color:var(--sub)">金利 年2.5%・元利均等</span></div>${loanList}<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px"><div style="font-size:12px;color:var(--sub);margin-bottom:5px">新規融資申請</div><select id="loanPresetSel" style="margin-bottom:5px">${opts}</select><button class="btn btn-p btn-sm btn-bl" onclick="takeLoan(parseInt(document.getElementById('loanPresetSel').value))">融資申請</button></div></div>`;
   }
 
+  // --------- 税金 ---------
   if(G.finTab==='tax'){
-    const salTotal=G.staff.reduce((a,p)=>a+p.salary,0);
-    const siTotal=Math.round(salTotal*SI_RATE);
+    const salTotal=G.staff.reduce((a,p)=>a+p.salary,0);const siTotal=Math.round(salTotal*SI_RATE);
     const estCorp=calcCorpTax(G.taxes.corpFYProfit);
     const nm=G.time.getMonth();const qM=[2,5,8,11];const nq=qM.find(q=>q>nm)??2;const nqYr=nq<nm?G.time.getFullYear()+1:G.time.getFullYear();
     const taxHist=G.taxes.history.length===0?'<div style="font-size:11px;color:var(--sub)">納税履歴なし</div>':G.taxes.history.slice().reverse().slice(0,8).map(t=>`<div class="fr"><span class="fi">${fmt(t.date).slice(0,7)} ${t.type}</span><span style="color:var(--red)">-${yen(t.amount)}</span></div>`).join('');
@@ -770,10 +864,9 @@ function vFinance(){
     <div class="card"><div class="ct">消費税（四半期納付）</div>
       <div class="fr"><span>今期累積（未払）</span><span>${yen(G.taxes.ctAccrued)}</span></div>
       <div class="fr"><span>次回納付予定</span><span>${nqYr}/${String(nq+1).padStart(2,'0')}末</span></div>
-      <div class="fr"><span>累計納付済</span><span>${yen(G.taxes.ctPaid)}</span></div>
-      <div class="ib ib-info" style="margin-top:5px">課税売上の消費税10% - 仕入税額控除後の実効率 約3.6%で計算</div></div>
+      <div class="fr"><span>累計納付済</span><span>${yen(G.taxes.ctPaid)}</span></div></div>
     <div class="card"><div class="ct">法人税等（3月決算）</div>
-      <div class="ib ib-info" style="margin-bottom:6px">法人税(15〜23.2%) + 法人住民税 + 法人事業税 ≒ 実効35%。均等割¥7万/年（赤字でも課税）</div>
+      <div class="ib ib-info" style="margin-bottom:6px">法人税(15〜23.2%) + 法人住民税 + 法人事業税 ≒ 実効35%。均等割¥7万/年</div>
       <div class="fr"><span>当期累積利益（FY）</span><span style="color:${G.taxes.corpFYProfit>=0?'var(--green)':'var(--red)'}">${yen(G.taxes.corpFYProfit)}</span></div>
       <div class="fr"><span>推定税額</span><span style="color:var(--red)">${yen(estCorp)}</span></div>
       <div class="fr"><span>累計納付済</span><span>${yen(G.taxes.corpPaid)}</span></div></div>
@@ -784,8 +877,7 @@ function vFinance(){
 
 function vMarket(){
   const myVc=G.vehicles.filter(v=>v.driverId).length;
-  const mo=G.time.getMonth();
-  const sm=SEASONAL[mo];
+  const mo=G.time.getMonth(),sm=SEASONAL[mo];
   const allComp=G.competitors;
   const compTot=parseFloat(allComp.reduce((a,c)=>a+c.share,0).toFixed(1));
   const totalVc=myVc+allComp.reduce((a,c)=>a+c.vehicles,0);
@@ -794,37 +886,17 @@ function vMarket(){
   const segs=[{name:G.co.name,share:myShare,color:'#0071e3'},...allComp.map(c=>({name:c.name,share:c.share,color:c.color})),{name:'その他',share:others,color:'#ccc'}];
   const barSegs=segs.map(s=>`<div class="comp-seg" style="width:${s.share}%;background:${s.color}"></div>`).join('');
   const legend=segs.map(s=>`<div style="display:flex;align-items:center;gap:5px;font-size:11px"><div style="width:10px;height:10px;background:${s.color};border-radius:2px;flex-shrink:0"></div><span>${s.name}</span><strong>${s.share}%</strong></div>`).join('');
-
-  // 年間需要カレンダー
-  const calRows=Array.from({length:12},(_,i)=>{
-    const s=SEASONAL[i];const w=Math.round((s-0.8)*250);const isNow=i===mo;
-    const bg=s>=1.2?'#ffebee':s>=1.0?'#e8f5e9':s>=0.9?'#fff8e1':'#e3f2fd';
-    const emoji=s>=1.2?'🔥':s>=1.0?'📈':s>=0.9?'😐':'❄️';
-    return`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;${isNow?'font-weight:700':''}">
-      <span style="width:20px;font-size:11px;text-align:right">${i+1}月</span>
-      <div style="flex:1;height:14px;background:#f0f0f3;border-radius:3px;overflow:hidden">
-        <div style="height:100%;width:${clamp(w,2,100)}%;background:${s>=1.1?'#e53935':s>=1.0?'#43a047':s>=0.9?'#fb8c00':'#1e88e5'};border-radius:3px"></div>
-      </div>
-      <span style="font-size:10px;width:26px;text-align:right;font-variant-numeric:tabular-nums">${s.toFixed(2)}</span>
-      <span style="font-size:10px">${emoji}</span>
-      <span style="font-size:10px;color:var(--sub);flex:1">${isNow?'◀ 現在':''}</span>
-    </div>`;}).join('');
-
-  const compCards=allComp.map(c=>{
-    const trendStr=c.trend>0.05?`<span style="color:var(--red)">▲${c.trend.toFixed(1)}%</span>`:c.trend<-0.05?`<span style="color:var(--green)">▼${Math.abs(c.trend).toFixed(1)}%</span>`:'<span style="color:var(--sub)">−</span>';
-    return`<div class="comp-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:13px"><span style="display:inline-block;width:10px;height:10px;background:${c.color};border-radius:2px;margin-right:5px;vertical-align:middle"></span>${c.name}</div><div style="font-size:11px;color:var(--sub)">車両${c.vehicles}台 ・ シェア${c.share}% ${trendStr} ・ ${c.aggression>.5?'⚠️ 積極型':'😐 安定型'}</div></div></div><div class="cbar" style="margin-top:5px"><div class="cbar-f" style="width:${Math.min(100,c.share*2)}%;background:${c.color}"></div></div></div>`;}).join('');
-
+  const calRows=Array.from({length:12},(_,i)=>{const s=SEASONAL[i];const w=Math.round((s-0.75)*333);const isNow=i===mo;return`<div style="display:flex;align-items:center;gap:6px;padding:2px 0;${isNow?'font-weight:700':''}"><span style="width:20px;font-size:11px;text-align:right">${i+1}月</span><div style="flex:1;height:12px;background:#f0f0f3;border-radius:3px;overflow:hidden"><div style="height:100%;width:${clamp(w,2,100)}%;background:${s>=1.2?'#e53935':s>=1.0?'#43a047':s>=0.9?'#fb8c00':'#1e88e5'};border-radius:3px"></div></div><span style="font-size:10px;width:28px;text-align:right;font-variant-numeric:tabular-nums">${s.toFixed(2)}</span><span style="font-size:10px">${s>=1.2?'🔥':s>=1.0?'📈':s>=0.9?'😐':'❄️'}</span><span style="font-size:10px;color:var(--sub)">${isNow?'◀ 現在':''}</span></div>`;}).join('');
+  const compCards=allComp.map(c=>{const tStr=c.trend>0.05?`<span style="color:var(--red)">▲${c.trend.toFixed(1)}%</span>`:c.trend<-0.05?`<span style="color:var(--green)">▼${Math.abs(c.trend).toFixed(1)}%</span>`:'<span style="color:var(--sub)">−</span>';return`<div class="comp-card"><div style="font-weight:600;font-size:13px"><span style="display:inline-block;width:10px;height:10px;background:${c.color};border-radius:2px;margin-right:5px;vertical-align:middle"></span>${c.name}</div><div style="font-size:11px;color:var(--sub)">車両${c.vehicles}台 ・ シェア${c.share}% ${tStr} ・ ${c.aggression>.5?'⚠️ 積極型':'😐 安定型'}</div><div class="cbar" style="margin-top:5px"><div class="cbar-f" style="width:${Math.min(100,c.share*2)}%;background:${c.color}"></div></div></div>`;}).join('');
   return`<div class="card"><div class="ct">広島市内 市場シェア</div>
     <div class="comp-bar-wrap" style="margin-bottom:8px">${barSegs}</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${legend}</div>
     <div style="font-size:11px;color:var(--sub)">市場全体 約${totalVc}台稼働</div>
-    <div class="comp-card" style="border-color:var(--accent);margin-top:8px"><div style="font-weight:600;font-size:13px;color:var(--accent)">🚕 ${G.co.name}（自社）</div><div style="font-size:11px;color:var(--sub)">稼働${myVc}台 ／ 保有${G.vehicles.length}台 ・ シェア <strong>${myShare}%</strong></div><div class="cbar" style="margin-top:5px"><div class="cbar-f" style="width:${Math.min(100,myShare*2)}%;background:var(--accent)"></div></div></div>
-  </div>
+    <div class="comp-card" style="border-color:var(--accent);margin-top:8px"><div style="font-weight:600;font-size:13px;color:var(--accent)">🚕 ${G.co.name}（自社）</div><div style="font-size:11px;color:var(--sub)">稼働${myVc}台 ／ 保有${G.vehicles.length}台 ・ シェア <strong>${myShare}%</strong></div><div class="cbar" style="margin-top:5px"><div class="cbar-f" style="width:${Math.min(100,myShare*2)}%;background:var(--accent)"></div></div></div></div>
   <div class="card"><div class="ct">競合各社</div>${compCards}</div>
   <div class="card"><div class="ct">年間需要カレンダー（季節変動係数）</div>
-    <div class="ib ib-info" style="margin-bottom:6px">現在: <strong>${SEASON_LBL[mo]}（×${sm.toFixed(2)}）</strong><br>12月(忘年会)が最高値×1.35、8月(お盆)が最低値×0.82</div>
-    ${calRows}
-  </div>`;
+    <div class="ib ib-info" style="margin-bottom:6px">現在: <strong>${SEASON_LBL[mo]}（×${sm.toFixed(2)}）</strong><br>12月 ×1.40が最高値、8月 ×0.78が最低値</div>
+    ${calRows}</div>`;
 }
 
 render();
